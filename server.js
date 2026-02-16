@@ -1,0 +1,43 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import http from "http";
+import { Server } from "socket.io";
+
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import bookingRoutes from "./routes/bookings.js";
+import notificationRoutes from "./routes/notifications.js";
+import historyRoutes from "./routes/history.js";
+import reportRoutes from "./routes/reports.js";
+import adminRoutes from "./routes/admin.js";
+import { initSocket } from "./utils/socket.js";
+
+dotenv.config();
+connectDB();
+
+const app = express();
+
+app.use(cors({ origin: "*" }));
+app.use(express.json());
+app.use("/uploads", express.static("uploads"));
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+initSocket(io);
+
+/* ROUTES */
+app.use("/api/auth", authRoutes);
+app.use("/api/participants", bookingRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/history", historyRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
+
+app.get("/", (_, res) => {
+  res.send("✅ API running...");
+});
+
+server.listen(process.env.PORT, () =>
+  console.log("✅Server running on port", process.env.PORT),
+);
