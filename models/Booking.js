@@ -9,11 +9,9 @@ const bookingSchema = new mongoose.Schema(
     paymentProof: String,
     status: { type: String, default: "Pending" },
   },
-
   { timestamps: true },
 );
 
-booking.status = "confirmed";
-await booking.save();
+const Booking = mongoose.model("Booking", bookingSchema);
 
-export default mongoose.model("Booking", bookingSchema);
+export default Booking;

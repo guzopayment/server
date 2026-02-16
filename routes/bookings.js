@@ -1,6 +1,5 @@
 import express from "express";
 import Booking from "../models/Booking.js";
-import Notification from "../models/Notification.js";
 import History from "../models/History.js";
 import { getIO } from "../utils/socket.js";
 
@@ -39,13 +38,12 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const booking = await Booking.create(req.body);
 
-  await Notification.create({ message: "New booking added" });
   await History.create({
     title: "New Booking",
     message: `${booking.name} registered`,
   });
 
-  getIO().emit("notification", "New booking added");
+  getIO().emit("newBooking", booking);
   res.json(booking);
 });
 

@@ -6,8 +6,7 @@ import { Server } from "socket.io";
 
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
-import bookingRoutes from "./routes/bookings.js";
-import notificationRoutes from "./routes/notifications.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 import historyRoutes from "./routes/history.js";
 import reportRoutes from "./routes/reports.js";
 import adminRoutes from "./routes/admin.js";
@@ -29,10 +28,14 @@ initSocket(io);
 /* ROUTES */
 app.use("/api/auth", authRoutes);
 app.use("/api/participants", bookingRoutes);
-app.use("/api/notifications", notificationRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/bookings", bookingRoutes);
+
+app.get("/api/test-db", async (req, res) => {
+  res.json({ message: "Database connection working ✅" });
+});
 
 app.get("/", (_, res) => {
   res.send("✅ API running...");

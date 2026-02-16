@@ -25,7 +25,7 @@ router.put("/confirm/:id", async (req, res) => {
     message: "Participant payment confirmed",
   });
 
-  getIO().emit("notification", "Payment confirmed");
+  getIO().emit("Payment confirmed", req.params.id);
 
   res.json({ msg: "Confirmed" });
 });
@@ -38,7 +38,7 @@ router.put("/reject/:id", async (req, res) => {
     message: "Participant rejected",
   });
 
-  getIO().emit("notification", "Payment rejected");
+  getIO().emit("paymentRejected", req.params.id);
 
   res.json({ msg: "Rejected" });
 });

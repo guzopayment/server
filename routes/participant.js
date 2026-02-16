@@ -2,7 +2,7 @@ import { io } from "../server.js";
 
 router.post("/submit", async (req, res) => {
   try {
-    const participant = await Participant.create(req.body);
+    const participant = await participant.create(req.body);
 
     // NOTIFICATION
     io.emit("newParticipant", {
