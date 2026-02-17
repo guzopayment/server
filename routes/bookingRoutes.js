@@ -22,6 +22,7 @@ const upload = multer({ storage });
 /* ===== CREATE BOOKING ===== */
 router.post("/", upload.single("paymentProof"), async (req, res) => {
   try {
+    // 🔴 DEBUG LOGS (temporary)
     console.log("BODY:", req.body);
     console.log("FILE:", req.file);
 
