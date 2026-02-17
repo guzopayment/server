@@ -38,6 +38,10 @@ app.use("/api/history", historyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use((err, req, res, next) => {
+  console.error("🔥 UNHANDLED ERROR:", err);
+  res.status(500).json({ message: err.message || "Server error" });
+});
 
 app.get("/api/test-db", async (req, res) => {
   res.json({ message: "Database connection working ✅" });
