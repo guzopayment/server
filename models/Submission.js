@@ -2,20 +2,24 @@ import mongoose from "mongoose";
 
 const submissionSchema = new mongoose.Schema(
   {
-    fullName: String,
+    name: String,
     organization: String,
     phone: String,
 
-    participantsCount: {
+    participants: {
       type: Number,
-      default: 1,
+      default: 0,
     },
 
     paymentProof: String,
 
-    paymentStatus: {
+    status: {
       type: String,
       default: "Pending",
+    },
+    action: {
+      type: Boolean,
+      default: "No action",
     },
   },
   { timestamps: true },

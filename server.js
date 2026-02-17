@@ -17,7 +17,13 @@ connectDB();
 
 const app = express();
 
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: "https://betesebguzopayment.vercel.app",
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 

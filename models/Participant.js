@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
-  fullName: {
+  name: {
     type: String,
     required: true,
   },
@@ -31,4 +31,4 @@ const schema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("Participant", schema);
+export default mongoose.model("Participants", schema);

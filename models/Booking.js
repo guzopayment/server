@@ -2,12 +2,13 @@ import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema(
   {
-    fullName: String,
+    name: String,
     organization: String,
     phone: String,
     participants: Number,
     paymentProof: String,
     status: { type: String, default: "Pending" },
+    action: { type: Boolean, default: "No action" },
   },
   { timestamps: true },
 );
