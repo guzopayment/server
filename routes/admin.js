@@ -1,10 +1,10 @@
 import express from "express";
 import Booking from "../models/Booking.js";
-import verifyAdmin from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/stats", verifyAdmin, async (_, res) => {
+router.get("/stats", authMiddleware, async (req, res) => {
   try {
     const bookings = await Booking.find();
 
@@ -30,18 +30,29 @@ router.get("/stats", verifyAdmin, async (_, res) => {
       organizationBreakdown: orgStats,
     });
   } catch (err) {
+    console.error("❌ /admin/stats error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-router.put("/confirm/:id", verifyAdmin, async (req, res) => {
-  await Booking.findByIdAndUpdate(req.params.id, { status: "Confirmed" });
-  res.json({ msg: "Confirmed" });
+router.put("/confirm/:id", authMiddleware, async (req, res) => {
+  try {
+    await Booking.findByIdAndUpdate(req.params.id, { status: "Confirmed" });
+    res.json({ msg: "Confirmed" });
+  } catch (err) {
+    console.error("❌ /admin/confirm error:", err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
-router.put("/reject/:id", verifyAdmin, async (req, res) => {
-  await Booking.findByIdAndUpdate(req.params.id, { status: "Rejected" });
-  res.json({ msg: "Rejected" });
+router.put("/reject/:id", authMiddleware, async (req, res) => {
+  try {
+    await Booking.findByIdAndUpdate(req.params.id, { status: "Rejected" });
+    res.json({ msg: "Rejected" });
+  } catch (err) {
+    console.error("❌ /admin/reject error:", err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 export default router;
