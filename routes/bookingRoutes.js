@@ -7,25 +7,42 @@ import auth from "../middleware/authMiddleware.js";
 import { getIO } from "../utils/socket.js";
 
 const router = express.Router();
-
 /* ===== MULTER SETUP ===== */
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => cb(null, "uploads"),
+//   filename: (req, file, cb) => {
+//     const ext = path.extname(file.originalname || "");
+//     cb(null, `${Date.now()}-${file.fieldname}${ext}`);
+//   },
+// });
+
+// const upload = multer({ storage });
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads"),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "");
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${file.fieldname}${ext}`);
   },
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed (jpg, png, webp, gif)."), false);
+  }
+};
+
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
 /* ===== CREATE BOOKING ===== */
 router.post("/", upload.single("paymentProof"), async (req, res) => {
   try {
-    // 🔴 DEBUG LOGS (temporary)
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-
     const booking = await Booking.create({
       name: (req.body.name || "").trim(),
       organization: (req.body.organization || "").trim(),

@@ -11,8 +11,14 @@ import historyRoutes from "./routes/history.js";
 import reportRoutes from "./routes/reports.js";
 import adminRoutes from "./routes/admin.js";
 import { initSocket } from "./utils/socket.js";
+import fs from "fs";
 
 dotenv.config();
+
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads", { recursive: true });
+}
+
 connectDB();
 
 const app = express();
@@ -38,6 +44,17 @@ app.use("/api/history", historyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+
+app.use((err, req, res, next) => {
+  if (err?.message?.includes("Only image files are allowed")) {
+    return res.status(400).json({ message: err.message });
+  }
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ message: err.message });
+  }
+  next(err);
+});
+
 app.use((err, req, res, next) => {
   console.error("🔥 UNHANDLED ERROR:", err);
   res.status(500).json({ message: err.message || "Server error" });
