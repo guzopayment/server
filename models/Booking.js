@@ -2,17 +2,15 @@ import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema(
   {
-    name: String,
-    organization: String,
-    phone: String,
-    participants: Number,
-    paymentProof: String,
+    name: { type: String, default: "" },
+    organization: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    participants: { type: Number, default: 0 },
+    paymentProof: { type: String, default: "" },
     status: { type: String, default: "Pending" },
-    action: { type: Boolean, default: "No action" },
+    action: { type: String, default: "No action" },
   },
   { timestamps: true },
 );
 
-const Booking = mongoose.model("Booking", bookingSchema);
-
-export default Booking;
+export default mongoose.model("Booking", bookingSchema);
