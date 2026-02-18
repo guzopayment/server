@@ -30,27 +30,29 @@ router.get("/stats", authMiddleware, async (req, res) => {
       organizationBreakdown: orgStats,
     });
   } catch (err) {
-    console.error("❌ /admin/stats error:", err);
+    console.error("STATS ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 router.put("/confirm/:id", authMiddleware, async (req, res) => {
   try {
-    await Booking.findByIdAndUpdate(req.params.id, { status: "Confirmed" });
+    await Booking.findByIdAndUpdate(req.params.id, {
+      status: "Confirmed",
+    });
     res.json({ msg: "Confirmed" });
   } catch (err) {
-    console.error("❌ /admin/confirm error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 router.put("/reject/:id", authMiddleware, async (req, res) => {
   try {
-    await Booking.findByIdAndUpdate(req.params.id, { status: "Rejected" });
+    await Booking.findByIdAndUpdate(req.params.id, {
+      status: "Rejected",
+    });
     res.json({ msg: "Rejected" });
   } catch (err) {
-    console.error("❌ /admin/reject error:", err);
     res.status(500).json({ message: err.message });
   }
 });
