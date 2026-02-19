@@ -44,6 +44,16 @@ app.use("/api/history", historyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+
+// ✅ Global error handler (so you see real errors instead of silent 500)
+app.use((err, req, res, next) => {
+  console.error("🔥 GLOBAL ERROR:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Server error",
+    path: req.originalUrl,
+  });
+});
+
 app.use((err, req, res, next) => {
   if (err?.message?.includes("Only image files are allowed")) {
     return res.status(400).json({ message: err.message });
