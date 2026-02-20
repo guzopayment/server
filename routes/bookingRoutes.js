@@ -4,7 +4,7 @@ import History from "../models/History.js";
 import { getIO } from "../utils/socket.js";
 import uploadProof from "../middleware/uploadProof.js";
 import cloudinary from "../utils/cloudinary.js";
-
+import adminAuth from "../middleware/authMiddleware.js"; // or your verifyAdmin/auth middleware
 const router = express.Router();
 
 // ✅ CREATE BOOKING (Cloudinary)
@@ -69,5 +69,30 @@ router.post(
     }
   },
 );
+// ✅ GET BOOKINGS (ADMIN)
+router.get("/", adminAuth, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page || "1", 10);
+    const limit = parseInt(req.query.limit || "50", 10);
+    const skip = (page - 1) * limit;
+
+    const total = await Booking.countDocuments();
+
+    const bookings = await Booking.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      bookings,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error("GET /bookings error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 export default router;
