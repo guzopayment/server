@@ -10,6 +10,8 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import historyRoutes from "./routes/history.js";
 import reportRoutes from "./routes/reports.js";
 import adminRoutes from "./routes/admin.js";
+import adminDebugRoutes from "./routes/adminDebug.js";
+
 import { initSocket } from "./utils/socket.js";
 import fs from "fs";
 
@@ -44,6 +46,7 @@ app.use("/api/history", historyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/debug", adminDebugRoutes);
 
 // ✅ Global error handler (so you see real errors instead of silent 500)
 app.use((err, req, res, next) => {
