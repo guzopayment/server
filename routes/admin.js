@@ -35,7 +35,7 @@ router.get("/stats", authMiddleware, async (req, res) => {
   }
 });
 // PUT /api/admin/bookings/:id  (admin only)
-router.put("/bookings/:id", auth, async (req, res) => {
+router.put("/bookings/:id", authMiddleware, async (req, res) => {
   try {
     const { name, organization, phone, participants } = req.body;
 
@@ -55,7 +55,7 @@ router.put("/bookings/:id", auth, async (req, res) => {
     return res.json({ booking: updated });
   } catch (err) {
     console.error("Update booking error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: err.message || "Server error" });
   }
 });
 
