@@ -34,30 +34,7 @@ router.get("/stats", authMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-// PUT /api/admin/bookings/:id  (admin only)
-// router.put("/bookings/:id", authMiddleware, async (req, res) => {
-//   try {
-//     const { name, organization, phone, participants } = req.body;
 
-//     const updated = await Booking.findByIdAndUpdate(
-//       req.params.id,
-//       {
-//         name: (name || "").trim(),
-//         organization: (organization || "").trim(),
-//         phone: (phone || "").trim(),
-//         participants: Number(participants || 0),
-//       },
-//       { new: true },
-//     );
-
-//     if (!updated) return res.status(404).json({ message: "Booking not found" });
-
-//     return res.json({ booking: updated });
-//   } catch (err) {
-//     console.error("Update booking error:", err);
-//     return res.status(500).json({ message: err.message || "Server error" });
-//   }
-// });
 router.put("/bookings/:id", authMiddleware, async (req, res) => {
   try {
     const { name, organization, phone, participants } = req.body;
