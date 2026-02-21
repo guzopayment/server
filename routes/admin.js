@@ -35,6 +35,29 @@ router.get("/stats", authMiddleware, async (req, res) => {
   }
 });
 // PUT /api/admin/bookings/:id  (admin only)
+// router.put("/bookings/:id", authMiddleware, async (req, res) => {
+//   try {
+//     const { name, organization, phone, participants } = req.body;
+
+//     const updated = await Booking.findByIdAndUpdate(
+//       req.params.id,
+//       {
+//         name: (name || "").trim(),
+//         organization: (organization || "").trim(),
+//         phone: (phone || "").trim(),
+//         participants: Number(participants || 0),
+//       },
+//       { new: true },
+//     );
+
+//     if (!updated) return res.status(404).json({ message: "Booking not found" });
+
+//     return res.json({ booking: updated });
+//   } catch (err) {
+//     console.error("Update booking error:", err);
+//     return res.status(500).json({ message: err.message || "Server error" });
+//   }
+// });
 router.put("/bookings/:id", authMiddleware, async (req, res) => {
   try {
     const { name, organization, phone, participants } = req.body;
@@ -42,20 +65,24 @@ router.put("/bookings/:id", authMiddleware, async (req, res) => {
     const updated = await Booking.findByIdAndUpdate(
       req.params.id,
       {
-        name: (name || "").trim(),
-        organization: (organization || "").trim(),
-        phone: (phone || "").trim(),
-        participants: Number(participants || 0),
+        ...(name !== undefined ? { name: String(name).trim() } : {}),
+        ...(organization !== undefined
+          ? { organization: String(organization).trim() }
+          : {}),
+        ...(phone !== undefined ? { phone: String(phone).trim() } : {}),
+        ...(participants !== undefined
+          ? { participants: Number(participants) }
+          : {}),
       },
       { new: true },
     );
 
     if (!updated) return res.status(404).json({ message: "Booking not found" });
 
-    return res.json({ booking: updated });
+    res.json({ message: "Updated", booking: updated });
   } catch (err) {
     console.error("Update booking error:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
