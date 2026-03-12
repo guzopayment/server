@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import Questionnaire from "../models/Questionnaire.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import PDFDocument from "pdfkit";
+import normalizePhone from "../utils/normalizePhone.js";
 
 const router = express.Router();
 
