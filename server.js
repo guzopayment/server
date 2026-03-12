@@ -61,6 +61,9 @@ app.get("/", (_, res) => {
   res.send("✅ API running...");
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).send("ok");
+});
 app.use((err, req, res, next) => {
   console.error("🔥 GLOBAL ERROR:", err);
   res.status(err.status || 500).json({
