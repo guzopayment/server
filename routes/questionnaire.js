@@ -10,9 +10,10 @@ const router = express.Router();
 const safeFilePart = (value = "") =>
   String(value || "all")
     .trim()
-    .replace(/[\\/:*?"<>|]+/g, "-")
-    .replace(/\s+/g, "_")
-    .slice(0, 60);
+    .replace(/[^\w\-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40) || "all";
 
 /* =========================
    CREATE QUESTIONNAIRE
@@ -379,7 +380,7 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
 
     addQuestionnaireSheet(sheet, rows);
 
-    const fileName = `questionnaire-${safeFilePart(subCity)}-${safeFilePart(woreda)}-${safeFilePart(nearChurch)}.xlsx`;
+    const fileName = `questionnaire-group-${Date.now()}.xlsx`;
 
     res.setHeader(
       "Content-Type",
@@ -394,7 +395,6 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
-
 /* =========================
    EXPORT GROUP TO PDF
 ========================= */
@@ -411,7 +411,7 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
 
     const rows = await Questionnaire.find(filter).sort({ createdAt: -1 });
 
-    const fileName = `questionnaire-${safeFilePart(subCity)}-${safeFilePart(woreda)}-${safeFilePart(nearChurch)}.pdf`;
+    const fileName = `questionnaire-group-${Date.now()}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -429,12 +429,12 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
     doc.moveDown();
 
     rows.forEach((row, index) => {
-      doc
-        .fontSize(11)
-        .text(
-          `${index + 1}. ${row.firstName || ""} ${row.middleName || ""} ${row.lastName || ""}`.trim(),
-          { underline: true },
-        );
+      const fullName =
+        `${row.firstName || ""} ${row.middleName || ""} ${row.lastName || ""}`.trim();
+
+      doc.fontSize(11).text(`${index + 1}. ${fullName || "N/A"}`, {
+        underline: true,
+      });
 
       doc.fontSize(10).text(`Phone: ${row.phone || ""}`);
       doc.text(`Alt Phone: ${row.altPhone || ""}`);
@@ -468,7 +468,6 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
-
 /* =========================
    ANALYTICS SUMMARY
 ========================= */
