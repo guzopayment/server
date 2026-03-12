@@ -7,6 +7,13 @@ import normalizePhone from "../utils/normalizePhone.js";
 
 const router = express.Router();
 
+const safeFilePart = (value = "") =>
+  String(value || "all")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "_")
+    .slice(0, 60);
+
 /* =========================
    CREATE QUESTIONNAIRE
 ========================= */
@@ -79,6 +86,7 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
+
 /* =========================
    GET ALL QUESTIONNAIRES
 ========================= */
@@ -95,7 +103,6 @@ router.get("/", authMiddleware, async (req, res) => {
 /* =========================
    UPDATE QUESTIONNAIRE
 ========================= */
-
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const updateData = {
@@ -170,6 +177,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
+
 /* =========================
    DELETE QUESTIONNAIRE
 ========================= */
@@ -300,6 +308,57 @@ router.get("/export/excel/all", authMiddleware, async (req, res) => {
 });
 
 /* =========================
+   EXPORT BY SUB-CITY TO EXCEL
+========================= */
+router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
+  try {
+    const rows = await Questionnaire.find().sort({
+      subCity: 1,
+      woreda: 1,
+      nearChurch: 1,
+      createdAt: -1,
+    });
+
+    const workbook = new ExcelJS.Workbook();
+
+    const grouped = rows.reduce((acc, item) => {
+      const key = item.subCity || "Unknown";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+    const keys = Object.keys(grouped);
+
+    if (keys.length === 0) {
+      const emptySheet = workbook.addWorksheet("Questionnaires");
+      addQuestionnaireSheet(emptySheet, []);
+    } else {
+      keys.forEach((key) => {
+        const safeSheetName = safeFilePart(key).slice(0, 31) || "Sheet";
+        const sheet = workbook.addWorksheet(safeSheetName);
+        addQuestionnaireSheet(sheet, grouped[key]);
+      });
+    }
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="questionnaires-by-subcity.xlsx"',
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("QUESTIONNAIRE EXPORT BY SUBCITY ERROR:", err);
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+});
+
+/* =========================
    EXPORT GROUP TO EXCEL
 ========================= */
 router.get("/export/excel/group", authMiddleware, async (req, res) => {
@@ -316,15 +375,11 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
     const rows = await Questionnaire.find(filter).sort({ createdAt: -1 });
 
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Grouped Report");
+    const sheet = workbook.addWorksheet("Grouped_Report");
 
     addQuestionnaireSheet(sheet, rows);
 
-    const fileName =
-      `questionnaire-${subCity || "all"}-${woreda || "all"}-${nearChurch || "all"}.xlsx`.replace(
-        /[\\/:*?"<>|]+/g,
-        "-",
-      );
+    const fileName = `questionnaire-${safeFilePart(subCity)}-${safeFilePart(woreda)}-${safeFilePart(nearChurch)}.xlsx`;
 
     res.setHeader(
       "Content-Type",
@@ -339,9 +394,10 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
-// ==================================
-// --------------Export to Pdf ------
-// ===================================
+
+/* =========================
+   EXPORT GROUP TO PDF
+========================= */
 router.get("/export/pdf/group", authMiddleware, async (req, res) => {
   try {
     const subCity = String(req.query.subCity || "").trim();
@@ -355,11 +411,7 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
 
     const rows = await Questionnaire.find(filter).sort({ createdAt: -1 });
 
-    const fileName =
-      `questionnaire-${subCity || "all"}-${woreda || "all"}-${nearChurch || "all"}.pdf`.replace(
-        /[\\/:*?"<>|]+/g,
-        "-",
-      );
+    const fileName = `questionnaire-${safeFilePart(subCity)}-${safeFilePart(woreda)}-${safeFilePart(nearChurch)}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -380,7 +432,7 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
       doc
         .fontSize(11)
         .text(
-          `${index + 1}. ${row.firstName} ${row.middleName} ${row.lastName}`,
+          `${index + 1}. ${row.firstName || ""} ${row.middleName || ""} ${row.lastName || ""}`.trim(),
           { underline: true },
         );
 
@@ -416,9 +468,10 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
-// ======================================
-//
-// =============================
+
+/* =========================
+   ANALYTICS SUMMARY
+========================= */
 router.get("/analytics/summary", authMiddleware, async (req, res) => {
   try {
     const total = await Questionnaire.countDocuments();
@@ -486,4 +539,5 @@ router.get("/analytics/summary", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 });
+
 export default router;
