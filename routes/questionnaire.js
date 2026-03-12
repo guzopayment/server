@@ -61,9 +61,7 @@ router.post("/", async (req, res) => {
       !payload.nearChurch ||
       !payload.houseType
     ) {
-      return res
-        .status(400)
-        .json({ message: "Please fill all required fields" });
+      return res.status(400).json({ message: "⚠️ እባክዎ ሁሉንም ቅጾች ይሙሉ  !⚠️" });
     }
 
     const existing = await Questionnaire.findOne({
@@ -71,15 +69,13 @@ router.post("/", async (req, res) => {
     });
 
     if (existing) {
-      return res
-        .status(409)
-        .json({ message: "You already submitted this questionnaire before" });
+      return res.status(409).json({ message: "⚠️ ይህን መረጃ ከዚህ በፊት ሞልተዋል !⚠️" });
     }
 
     const created = await Questionnaire.create(payload);
 
     return res.status(201).json({
-      message: "Questionnaire submitted successfully",
+      message: "✅ መጠይቁን በትክክል ሞልተው አስገብተዋል! ✅",
       data: created,
     });
   } catch (err) {
