@@ -65,6 +65,9 @@ router.post("/", async (req, res) => {
     }
 
     const existing = await Questionnaire.findOne({
+      firstName: payload.firstName,
+      middleName: payload.middleName,
+      lastName: payload.lastName,
       normalizedPhone: payload.normalizedPhone,
     });
 
