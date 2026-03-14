@@ -1,15 +1,11 @@
 import mongoose from "mongoose";
 
-const historySchema = new mongoose.Schema(
+const schema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true },
-    message: { type: String, required: true, trim: true },
-    actor: { type: String, default: "" }, // admin/user/system
-    entityType: { type: String, default: "" }, // booking/questionnaire/report/auth
-    entityId: { type: String, default: "" },
+    title: String,
+    message: String,
   },
   { timestamps: true },
 );
 
-const History = mongoose.model("History", historySchema);
-export default History;
+export default mongoose.model("History", schema);

@@ -4,7 +4,7 @@ import Questionnaire from "../models/Questionnaire.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import PDFDocument from "pdfkit";
 import normalizePhone from "../utils/normalizePhone.js";
-import logHistory from "../utils/logHistory.js";
+
 const router = express.Router();
 
 const safeFilePart = (value = "") =>
@@ -76,15 +76,7 @@ router.post("/", async (req, res) => {
     }
 
     const created = await Questionnaire.create(payload);
-    await logHistory(
-      "Questionnaire Submitted",
-      `${created.firstName} ${created.middleName} ${created.lastName} submitted questionnaire`,
-      {
-        actor: "user",
-        entityType: "questionnaire",
-        entityId: String(created._id),
-      },
-    );
+
     return res.status(201).json({
       message: "✅ መጠይቁን በትክክል ሞልተው አስገብተዋል! ✅",
       data: created,
@@ -178,15 +170,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     if (!updated) {
       return res.status(404).json({ message: "Questionnaire not found" });
     }
-    await logHistory(
-      "Questionnaire Updated",
-      `${updated.firstName} ${updated.middleName} ${updated.lastName} questionnaire was updated`,
-      {
-        actor: "admin",
-        entityType: "questionnaire",
-        entityId: String(updated._id),
-      },
-    );
+
     return res.json({ message: "Updated", data: updated });
   } catch (err) {
     console.error("QUESTIONNAIRE UPDATE ERROR:", err);
@@ -303,14 +287,7 @@ router.get("/export/excel/all", authMiddleware, async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Questionnaires");
-    await logHistory(
-      "Questionnaire Exported",
-      "Admin exported all questionnaire data to Excel",
-      {
-        actor: "admin",
-        entityType: "questionnaire-export",
-      },
-    );
+
     addQuestionnaireSheet(sheet, rows);
 
     res.setHeader(
@@ -372,14 +349,7 @@ router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
       "Content-Disposition",
       'attachment; filename="questionnaires-by-subcity.xlsx"',
     );
-    await logHistory(
-      "Questionnaire Exported",
-      "Admin exported all questionnaire data group by-sub-city",
-      {
-        actor: "admin",
-        entityType: "questionnaire-export",
-      },
-    );
+
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -416,14 +386,7 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    await logHistory(
-      "Questionnaire Group Exported",
-      `Admin exported questionnaire Excel for ${subCity || "All"} / ${woreda || "All"} / ${nearChurch || "All"}`,
-      {
-        actor: "admin",
-        entityType: "questionnaire-export",
-      },
-    );
+
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -497,14 +460,6 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
         doc.moveDown();
       }
     });
-    await logHistory(
-      "Questionnaire PDF Exported",
-      `Admin exported questionnaire PDF for ${subCity || "All"} / ${woreda || "All"} / ${nearChurch || "All"}`,
-      {
-        actor: "admin",
-        entityType: "questionnaire-export",
-      },
-    );
 
     doc.end();
   } catch (err) {
