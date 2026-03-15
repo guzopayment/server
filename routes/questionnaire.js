@@ -1,3 +1,4 @@
+// length
 import express from "express";
 import ExcelJS from "exceljs";
 import Questionnaire from "../models/Questionnaire.js";
@@ -7,13 +8,99 @@ import normalizePhone from "../utils/normalizePhone.js";
 
 const router = express.Router();
 
+/* =========================
+   EXCEL SAFE SHEET NAME
+   - keeps Amharic
+   - removes only Excel-forbidden chars
+   - max 31 chars
+========================= */
+const makeUniqueSheetName = (rawName, usedNames, fallbackIndex = 1) => {
+  let baseName = String(rawName || "").trim();
+
+  if (!baseName) {
+    baseName = `Sheet_${fallbackIndex}`;
+  }
+
+  // Excel forbidden characters: []:*?/\
+  baseName = baseName.replace(/[\[\]\:\*\?\/\\]/g, "").trim();
+
+  if (!baseName) {
+    baseName = `Sheet_${fallbackIndex}`;
+  }
+
+  // Excel max sheet name length = 31
+  baseName = baseName.slice(0, 31);
+
+  let finalName = baseName;
+  let counter = 1;
+
+  while (usedNames.has(finalName)) {
+    const suffix = `_${counter}`;
+    finalName = `${baseName.slice(0, 31 - suffix.length)}${suffix}`;
+    counter += 1;
+  }
+
+  usedNames.add(finalName);
+  return finalName;
+};
+
 const safeFilePart = (value = "") =>
   String(value || "all")
     .trim()
-    .replace(/[^\w\-]+/g, "_")
+    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, "_")
+    .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 40) || "all";
+
+/* =========================
+   EXPORT HELPERS
+========================= */
+const addQuestionnaireSheet = (sheet, rows) => {
+  sheet.columns = [
+    { header: "First Name", key: "firstName", width: 18 },
+    { header: "Middle Name", key: "middleName", width: 18 },
+    { header: "Last Name", key: "lastName", width: 18 },
+    { header: "Phone", key: "phone", width: 18 },
+    { header: "Alt Phone", key: "altPhone", width: 18 },
+    { header: "Organization", key: "organization", width: 30 },
+    { header: "Sex", key: "sex", width: 12 },
+    { header: "Graduated Field", key: "graduatedField", width: 22 },
+    { header: "Current Job", key: "currentJob", width: 22 },
+    { header: "Sub City", key: "subCity", width: 22 },
+    { header: "Woreda", key: "woreda", width: 12 },
+    { header: "Kebele", key: "kebele", width: 12 },
+    { header: "Specific Place", key: "specificPlace", width: 28 },
+    { header: "Near Church", key: "nearChurch", width: 24 },
+    { header: "House Type", key: "houseType", width: 14 },
+    { header: "Created At", key: "createdAt", width: 22 },
+  ];
+
+  rows.forEach((item) => {
+    sheet.addRow({
+      firstName: item.firstName || "",
+      middleName: item.middleName || "",
+      lastName: item.lastName || "",
+      phone: item.phone || "",
+      altPhone: item.altPhone || "",
+      organization: item.organization || "",
+      sex: item.sex || "",
+      graduatedField: item.graduatedField || "",
+      currentJob: item.currentJob || "",
+      subCity: item.subCity || "",
+      woreda: item.woreda || "",
+      kebele: item.kebele || "",
+      specificPlace: item.specificPlace || "",
+      nearChurch: item.nearChurch || "",
+      houseType: item.houseType || "",
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toLocaleString()
+        : "",
+    });
+  });
+
+  sheet.getRow(1).font = { bold: true };
+};
 
 /* =========================
    CREATE QUESTIONNAIRE
@@ -61,7 +148,7 @@ router.post("/", async (req, res) => {
       !payload.nearChurch ||
       !payload.houseType
     ) {
-      return res.status(400).json({ message: "⚠️ እባክዎ ሁሉንም ቅጾች ይሙሉ  !⚠️" });
+      return res.status(400).json({ message: "⚠️ እባክዎ ሁሉንም ቅጾች ይሙሉ ! ⚠️" });
     }
 
     const existing = await Questionnaire.findOne({
@@ -72,7 +159,7 @@ router.post("/", async (req, res) => {
     });
 
     if (existing) {
-      return res.status(409).json({ message: "⚠️ ይህን መረጃ ከዚህ በፊት ሞልተዋል !⚠️" });
+      return res.status(409).json({ message: "⚠️ ይህን መረጃ ከዚህ በፊት ሞልተዋል ! ⚠️" });
     }
 
     const created = await Questionnaire.create(payload);
@@ -83,7 +170,16 @@ router.post("/", async (req, res) => {
     });
   } catch (err) {
     console.error("QUESTIONNAIRE CREATE ERROR:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+
+    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
+      return res.status(409).json({
+        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
+      });
+    }
+
+    return res.status(500).json({
+      message: "የተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
+    });
   }
 });
 
@@ -174,7 +270,16 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.json({ message: "Updated", data: updated });
   } catch (err) {
     console.error("QUESTIONNAIRE UPDATE ERROR:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+
+    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
+      return res.status(409).json({
+        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
+      });
+    }
+
+    return res.status(500).json({
+      message: "የተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
+    });
   }
 });
 
@@ -215,8 +320,9 @@ router.get("/grouped/all", authMiddleware, async (req, res) => {
 
       if (!acc[subCity]) acc[subCity] = {};
       if (!acc[subCity][woreda]) acc[subCity][woreda] = {};
-      if (!acc[subCity][woreda][nearChurch])
+      if (!acc[subCity][woreda][nearChurch]) {
         acc[subCity][woreda][nearChurch] = [];
+      }
 
       acc[subCity][woreda][nearChurch].push(item);
       return acc;
@@ -243,7 +349,7 @@ const addQuestionnaireSheet = (sheet, rows) => {
     { header: "Sex", key: "sex", width: 12 },
     { header: "Graduated Field", key: "graduatedField", width: 22 },
     { header: "Current Job", key: "currentJob", width: 22 },
-    { header: "Sub City", key: "subCity", width: 18 },
+    { header: "Sub City", key: "subCity", width: 22 },
     { header: "Woreda", key: "woreda", width: 12 },
     { header: "Kebele", key: "kebele", width: 12 },
     { header: "Specific Place", key: "specificPlace", width: 28 },
@@ -322,25 +428,51 @@ router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
     const workbook = new ExcelJS.Workbook();
 
     const grouped = rows.reduce((acc, item) => {
-      const key = item.subCity || "Unknown";
+      const key = (item.subCity || "Unknown").trim() || "Unknown";
       if (!acc[key]) acc[key] = [];
       acc[key].push(item);
       return acc;
     }, {});
 
+    const usedSheetNames = new Set();
     const keys = Object.keys(grouped);
 
     if (keys.length === 0) {
-      const emptySheet = workbook.addWorksheet("Questionnaires");
-      addQuestionnaireSheet(emptySheet, []);
+      const sheet = workbook.addWorksheet("Questionnaires");
+      addQuestionnaireSheet(sheet, []);
     } else {
-      keys.forEach((key) => {
-        const safeSheetName = safeFilePart(key).slice(0, 31) || "Sheet";
-        const sheet = workbook.addWorksheet(safeSheetName);
-        addQuestionnaireSheet(sheet, grouped[key]);
+      keys.forEach((subCity, index) => {
+        let baseName = String(subCity || "Unknown").trim();
+        if (!baseName) baseName = "Unknown";
+
+        // Excel forbidden characters only
+        baseName = baseName.replace(/[\[\]\:\*\?\/\\]/g, "").trim();
+
+        if (!baseName) {
+          baseName = `Sheet_${index + 1}`;
+        }
+
+        baseName = baseName.slice(0, 25);
+
+        let sheetName = baseName;
+        let counter = 1;
+
+        while (usedSheetNames.has(sheetName)) {
+          const suffix = `_${counter}`;
+          sheetName = `${baseName.slice(0, 31 - suffix.length)}${suffix}`;
+          counter += 1;
+        }
+
+        usedSheetNames.add(sheetName);
+
+        const sheet = workbook.addWorksheet(sheetName);
+        addQuestionnaireSheet(sheet, grouped[subCity]);
       });
     }
 
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.status(200);
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -350,11 +482,12 @@ router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
       'attachment; filename="questionnaires-by-subcity.xlsx"',
     );
 
-    await workbook.xlsx.write(res);
-    res.end();
+    return res.send(Buffer.from(buffer));
   } catch (err) {
     console.error("QUESTIONNAIRE EXPORT BY SUBCITY ERROR:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    return res.status(500).json({
+      message: err.message || "Server error",
+    });
   }
 });
 
@@ -379,21 +512,24 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
 
     addQuestionnaireSheet(sheet, rows);
 
-    const fileName = `questionnaire-group-${Date.now()}.xlsx`;
+    const fileName = `questionnaire_${safeFilePart(subCity)}_${safeFilePart(woreda)}_${safeFilePart(nearChurch)}.xlsx`;
 
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.status(200);
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
-    await workbook.xlsx.write(res);
-    res.end();
+    return res.send(Buffer.from(buffer));
   } catch (err) {
     console.error("QUESTIONNAIRE EXPORT GROUP ERROR:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    return res.status(500).send(err.message || "Server error");
   }
 });
+
 /* =========================
    EXPORT GROUP TO PDF
 ========================= */
@@ -410,7 +546,7 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
 
     const rows = await Questionnaire.find(filter).sort({ createdAt: -1 });
 
-    const fileName = `questionnaire-group-${Date.now()}.pdf`;
+    const fileName = `questionnaire_${safeFilePart(subCity)}_${safeFilePart(woreda)}_${safeFilePart(nearChurch)}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -464,9 +600,10 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
     doc.end();
   } catch (err) {
     console.error("QUESTIONNAIRE PDF EXPORT ERROR:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    return res.status(500).send(err.message || "Server error");
   }
 });
+
 /* =========================
    ANALYTICS SUMMARY
 ========================= */
