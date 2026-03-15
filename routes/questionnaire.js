@@ -338,51 +338,51 @@ router.get("/grouped/all", authMiddleware, async (req, res) => {
 /* =========================
    EXPORT HELPERS
 ========================= */
-const addQuestionnaireSheet = (sheet, rows) => {
-  sheet.columns = [
-    { header: "First Name", key: "firstName", width: 18 },
-    { header: "Middle Name", key: "middleName", width: 18 },
-    { header: "Last Name", key: "lastName", width: 18 },
-    { header: "Phone", key: "phone", width: 18 },
-    { header: "Alt Phone", key: "altPhone", width: 18 },
-    { header: "Organization", key: "organization", width: 30 },
-    { header: "Sex", key: "sex", width: 12 },
-    { header: "Graduated Field", key: "graduatedField", width: 22 },
-    { header: "Current Job", key: "currentJob", width: 22 },
-    { header: "Sub City", key: "subCity", width: 22 },
-    { header: "Woreda", key: "woreda", width: 12 },
-    { header: "Kebele", key: "kebele", width: 12 },
-    { header: "Specific Place", key: "specificPlace", width: 28 },
-    { header: "Near Church", key: "nearChurch", width: 24 },
-    { header: "House Type", key: "houseType", width: 14 },
-    { header: "Created At", key: "createdAt", width: 22 },
-  ];
+// const addQuestionnaireSheet = (sheet, rows) => {
+//   sheet.columns = [
+//     { header: "First Name", key: "firstName", width: 18 },
+//     { header: "Middle Name", key: "middleName", width: 18 },
+//     { header: "Last Name", key: "lastName", width: 18 },
+//     { header: "Phone", key: "phone", width: 18 },
+//     { header: "Alt Phone", key: "altPhone", width: 18 },
+//     { header: "Organization", key: "organization", width: 30 },
+//     { header: "Sex", key: "sex", width: 12 },
+//     { header: "Graduated Field", key: "graduatedField", width: 22 },
+//     { header: "Current Job", key: "currentJob", width: 22 },
+//     { header: "Sub City", key: "subCity", width: 22 },
+//     { header: "Woreda", key: "woreda", width: 12 },
+//     { header: "Kebele", key: "kebele", width: 12 },
+//     { header: "Specific Place", key: "specificPlace", width: 28 },
+//     { header: "Near Church", key: "nearChurch", width: 24 },
+//     { header: "House Type", key: "houseType", width: 14 },
+//     { header: "Created At", key: "createdAt", width: 22 },
+//   ];
 
-  rows.forEach((item) => {
-    sheet.addRow({
-      firstName: item.firstName || "",
-      middleName: item.middleName || "",
-      lastName: item.lastName || "",
-      phone: item.phone || "",
-      altPhone: item.altPhone || "",
-      organization: item.organization || "",
-      sex: item.sex || "",
-      graduatedField: item.graduatedField || "",
-      currentJob: item.currentJob || "",
-      subCity: item.subCity || "",
-      woreda: item.woreda || "",
-      kebele: item.kebele || "",
-      specificPlace: item.specificPlace || "",
-      nearChurch: item.nearChurch || "",
-      houseType: item.houseType || "",
-      createdAt: item.createdAt
-        ? new Date(item.createdAt).toLocaleString()
-        : "",
-    });
-  });
+//   rows.forEach((item) => {
+//     sheet.addRow({
+//       firstName: item.firstName || "",
+//       middleName: item.middleName || "",
+//       lastName: item.lastName || "",
+//       phone: item.phone || "",
+//       altPhone: item.altPhone || "",
+//       organization: item.organization || "",
+//       sex: item.sex || "",
+//       graduatedField: item.graduatedField || "",
+//       currentJob: item.currentJob || "",
+//       subCity: item.subCity || "",
+//       woreda: item.woreda || "",
+//       kebele: item.kebele || "",
+//       specificPlace: item.specificPlace || "",
+//       nearChurch: item.nearChurch || "",
+//       houseType: item.houseType || "",
+//       createdAt: item.createdAt
+//         ? new Date(item.createdAt).toLocaleString()
+//         : "",
+//     });
+//   });
 
-  sheet.getRow(1).font = { bold: true };
-};
+//   sheet.getRow(1).font = { bold: true };
+// };
 
 /* =========================
    EXPORT ALL TO EXCEL
