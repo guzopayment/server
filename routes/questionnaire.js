@@ -5,6 +5,7 @@ import Questionnaire from "../models/Questionnaire.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import PDFDocument from "pdfkit";
 import normalizePhone from "../utils/normalizePhone.js";
+import logHistory from "../utils/logHistory.js";
 
 const router = express.Router();
 
@@ -163,7 +164,15 @@ router.post("/", async (req, res) => {
     }
 
     const created = await Questionnaire.create(payload);
-
+    await logHistory(
+      "Questionnaire Submitted",
+      `${created.firstName} ${created.middleName} ${created.lastName} submitted questionnaire`,
+      {
+        actor: "user",
+        entityType: "questionnaire",
+        entityId: String(created._id),
+      },
+    );
     return res.status(201).json({
       message: "✅ መጠይቁን በትክክል ሞልተው አስገብተዋል! ✅",
       data: created,
@@ -293,7 +302,15 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: "Questionnaire not found" });
     }
-
+    await logHistory(
+      "Questionnaire Deleted",
+      `${deleted.firstName} ${deleted.middleName} ${deleted.lastName} record was deleted`,
+      {
+        actor: "admin",
+        entityType: "questionnaire",
+        entityId: String(deleted._id),
+      },
+    );
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
     console.error("QUESTIONNAIRE DELETE ERROR:", err);
@@ -355,7 +372,14 @@ router.get("/export/excel/all", authMiddleware, async (req, res) => {
       "Content-Disposition",
       'attachment; filename="questionnaires-all.xlsx"',
     );
-
+    await logHistory(
+      "Export All Questionnaire Excel",
+      "Admin exported all questionnaire data to Excel",
+      {
+        actor: "admin",
+        entityType: "export",
+      },
+    );
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -431,6 +455,14 @@ router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
     res.setHeader(
       "Content-Disposition",
       'attachment; filename="questionnaires-by-subcity.xlsx"',
+    );
+    await logHistory(
+      "Export Questionnaire By Sub-City",
+      "Admin exported questionnaire data grouped by sub-city to Excel",
+      {
+        actor: "admin",
+        entityType: "export",
+      },
     );
 
     return res.send(Buffer.from(buffer));
@@ -547,7 +579,14 @@ router.get("/export/pdf/group", authMiddleware, async (req, res) => {
         doc.moveDown();
       }
     });
-
+    await logHistory(
+      "Export Questionnaire Group PDF",
+      `Admin exported PDF for ${subCity || "All"} / ${woreda || "All"} / ${nearChurch || "All"}`,
+      {
+        actor: "admin",
+        entityType: "export",
+      },
+    );
     doc.end();
   } catch (err) {
     console.error("QUESTIONNAIRE PDF EXPORT ERROR:", err);
