@@ -19,7 +19,12 @@ router.post("/login", async (req, res) => {
 
     if (!admin || admin.password !== password) {
       return res.status(401).json({
-        message: "ኢሜይል ወይም የይለፍ ቃል ትክክል አይደለም",
+        message: " ያስገቡት የይለፍ ቃል ትክክል አይደለም",
+      });
+    }
+    if (!admin || admin.email !== email) {
+      return res.status(401).json({
+        message: "ያስገቡት ኢሜይ ትክክል አይደለም",
       });
     }
 
