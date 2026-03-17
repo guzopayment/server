@@ -74,6 +74,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 import logHistory from "../utils/logHistory.js";
+import { useNavigate } from "react-router-dom";
 
 const router = express.Router();
 
@@ -114,6 +115,12 @@ router.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7m" },
     );
+
+    const navigate = useNavigate();
+
+    if (expiresIn === true) {
+      navigate("/admin-login");
+    }
 
     await logHistory("Admin Login", `${admin.email} logged in successfully`, {
       actor: "admin",

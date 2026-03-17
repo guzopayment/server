@@ -23,10 +23,13 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Admin from "./models/Admin.js";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 
 const run = async () => {
+  const hashed = await bcrypt.hash("Admin23c0n0myb3t343b", 10);
+
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB connected");
@@ -42,7 +45,7 @@ const run = async () => {
     const admin = await Admin.create({
       name: "Admin",
       email: email.toLowerCase(),
-      password: "Admin23c0n0myb3t343b",
+      password: hashed,
     });
 
     console.log("Admin created:", admin);
