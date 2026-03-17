@@ -23,6 +23,7 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Admin from "./models/Admin.js";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 
@@ -38,11 +39,13 @@ const run = async () => {
       console.log("Admin already exists:", existing.email);
       process.exit(0);
     }
+    const hashed = await bcrypt.hash("Admin23c0n0myb3t343b", 10);
 
     const admin = await Admin.create({
       name: "Admin",
       email: email.toLowerCase(),
-      password: "Admin23c0n0myb3t343b",
+      password: hashed,
+      role: "admin",
     });
 
     console.log("Admin created:", admin);
