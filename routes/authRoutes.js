@@ -18,7 +18,7 @@ router.post("/login", async (req, res) => {
         message: "እባክዎ ኢሜል ያስገቡ!",
       });
     }
-    if (!password) {
+    if (!password && !email) {
       return res.status(400).json({
         message: "እባክዎ ኢሜል እና የይለፍ ቃል ያስገቡ!",
       });
