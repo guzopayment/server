@@ -25,17 +25,15 @@ router.post("/login", async (req, res) => {
     }
 
     const admin = await Admin.findOne({ email: String(email).trim() });
-    admin = await Admin.findOne({ password: String(password).trim() });
-
-    if (!admin || admin.email !== email) {
-      return res.status(401).json({
-        message: "ያስገቡት ኢሜይ ትክክል አይደለም",
-      });
-    }
 
     if (!admin || admin.password !== password) {
       return res.status(401).json({
         message: " ያስገቡት የይለፍ ቃል ትክክል አይደለም",
+      });
+    }
+    if (!admin || admin.email !== email) {
+      return res.status(401).json({
+        message: "ያስገቡት ኢሜይ ትክክል አይደለም",
       });
     }
 
