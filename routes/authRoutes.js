@@ -8,23 +8,34 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
-
-    if (!email || !password) {
+    if (!email) {
+      return res.status(400).json({
+        message: "እባክዎ ኢሜል ያስገቡ!",
+      });
+    }
+    if (!password) {
+      return res.status(400).json({
+        message: "እባክዎ ኢሜል ያስገቡ!",
+      });
+    }
+    if (!password) {
       return res.status(400).json({
         message: "እባክዎ ኢሜል እና የይለፍ ቃል ያስገቡ!",
       });
     }
 
     const admin = await Admin.findOne({ email: String(email).trim() });
+    admin = await Admin.findOne({ password: String(password).trim() });
+
+    if (!admin || admin.email !== email) {
+      return res.status(401).json({
+        message: "ያስገቡት ኢሜይ ትክክል አይደለም",
+      });
+    }
 
     if (!admin || admin.password !== password) {
       return res.status(401).json({
         message: " ያስገቡት የይለፍ ቃል ትክክል አይደለም",
-      });
-    }
-    if (!admin || admin.email !== email) {
-      return res.status(401).json({
-        message: "ያስገቡት ኢሜይ ትክክል አይደለም",
       });
     }
 
