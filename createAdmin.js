@@ -45,7 +45,6 @@ const run = async () => {
       name: "Admin",
       email: email.toLowerCase(),
       password: hashed,
-      role: "admin",
     });
 
     console.log("Admin created:", admin);
