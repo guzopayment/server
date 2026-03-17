@@ -11,11 +11,13 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import historyRoutes from "./routes/history.js";
+import questionnaireRoutes from "./routes/questionnaire.js";
+import optionsRoutes from "./routes/options.js";
+
 import reportRoutes from "./routes/reports.js";
 import adminRoutes from "./routes/admin.js";
 import adminDebugRoutes from "./routes/adminDebug.js";
 import adminCleanupRoutes from "./routes/adminCleanup.js";
-import questionnaireRoutes from "./routes/questionnaire.js";
 import { initSocket } from "./utils/socket.js";
 
 console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
@@ -44,14 +46,15 @@ const io = new Server(server, { cors: { origin: "*" } });
 initSocket(io);
 
 app.use("/api/auth", authRoutes);
-app.use("/api/participants", bookingRoutes);
 app.use("/api/history", historyRoutes);
+app.use("api/options", optionsRoutes);
+app.use("/api/questionnaire", questionnaireRoutes);
+app.use("/api/participants", bookingRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/debug", adminDebugRoutes);
 app.use("/api/admin", adminCleanupRoutes);
-app.use("/api/questionnaire", questionnaireRoutes);
 
 app.get("/api/test-db", async (req, res) => {
   res.json({ message: "Database connection working ✅" });

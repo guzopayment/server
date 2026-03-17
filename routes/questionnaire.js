@@ -475,6 +475,75 @@ router.get("/export/excel/by-subcity", authMiddleware, async (req, res) => {
 });
 
 /* =========================
+   EXPORT BY SUBCITY TO EXCEL IN ONE SHEET
+========================= */
+router.get(
+  "/export/excel/by-subcity-one-sheet",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const rows = await Questionnaire.find().sort({
+        subCity: 1,
+        woreda: 1,
+        nearChurch: 1,
+        createdAt: -1,
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("By_Sub_City");
+
+      sheet.columns = [
+        { header: "Sub City", key: "subCity", width: 22 },
+        { header: "First Name", key: "firstName", width: 18 },
+        { header: "Middle Name", key: "middleName", width: 18 },
+        { header: "Last Name", key: "lastName", width: 18 },
+        { header: "Phone", key: "phone", width: 18 },
+        { header: "Organization", key: "organization", width: 30 },
+        { header: "Current Job", key: "currentJob", width: 22 },
+        { header: "Woreda", key: "woreda", width: 12 },
+        { header: "Near Church", key: "nearChurch", width: 24 },
+        { header: "Created At", key: "createdAt", width: 22 },
+      ];
+
+      rows.forEach((item) => {
+        sheet.addRow({
+          subCity: item.subCity || "",
+          firstName: item.firstName || "",
+          middleName: item.middleName || "",
+          lastName: item.lastName || "",
+          phone: item.phone || "",
+          organization: item.organization || "",
+          currentJob: item.currentJob || "",
+          woreda: item.woreda || "",
+          nearChurch: item.nearChurch || "",
+          createdAt: item.createdAt
+            ? new Date(item.createdAt).toLocaleString()
+            : "",
+        });
+      });
+
+      sheet.getRow(1).font = { bold: true };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      res.status(200);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="questionnaires-by-subcity-one-sheet.xlsx"',
+      );
+
+      return res.send(Buffer.from(buffer));
+    } catch (err) {
+      console.error("EXPORT BY SUBCITY ONE SHEET ERROR:", err);
+      return res.status(500).json({ message: err.message || "Server error" });
+    }
+  },
+);
+/* =========================
    EXPORT GROUP TO EXCEL
 ========================= */
 router.get("/export/excel/group", authMiddleware, async (req, res) => {
@@ -512,7 +581,60 @@ router.get("/export/excel/group", authMiddleware, async (req, res) => {
     return res.status(500).send(err.message || "Server error");
   }
 });
+/* =========================
+   EXPORT SUB-CITY TO PDF
+========================= */
+router.get("/export/pdf/by-subcity", authMiddleware, async (req, res) => {
+  try {
+    const rows = await Questionnaire.find().sort({
+      subCity: 1,
+      woreda: 1,
+      nearChurch: 1,
+      createdAt: -1,
+    });
 
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="questionnaires-by-subcity.pdf"',
+    );
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    doc.fontSize(18).text("Questionnaire By Sub City Report", {
+      align: "center",
+    });
+    doc.moveDown();
+
+    let currentSubCity = "";
+
+    rows.forEach((row, index) => {
+      if (row.subCity !== currentSubCity) {
+        currentSubCity = row.subCity || "Unknown";
+        doc.moveDown();
+        doc.fontSize(14).text(`Sub City: ${currentSubCity}`, {
+          underline: true,
+        });
+        doc.moveDown(0.5);
+      }
+
+      const fullName =
+        `${row.firstName || ""} ${row.middleName || ""} ${row.lastName || ""}`.trim();
+
+      doc
+        .fontSize(10)
+        .text(
+          `${index + 1}. ${fullName} | ${row.phone || ""} | ${row.organization || ""} | ${row.currentJob || ""}`,
+        );
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error("EXPORT PDF BY SUBCITY ERROR:", err);
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+});
 /* =========================
    EXPORT GROUP TO PDF
 ========================= */
