@@ -33,7 +33,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "https://betesebguzopayment.vercel.app",
+    origin: "https://economybetesebsocialdeputiespage.vercel.app",
     credentials: true,
   }),
 );
