@@ -20,13 +20,16 @@
     "install": "^0.13.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "mongoose": "^9.2.1",
     "multer": "^2.0.2",
     "npm": "^11.10.0",
     "pdfkit": "^0.17.2",
     "react": "^19.2.4",
     "react-router-dom": "^7.13.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "xlsx": "^0.18.5"
   },
   "keywords": [],
   "author": "",
