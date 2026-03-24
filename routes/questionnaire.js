@@ -135,18 +135,18 @@ router.post("/", async (req, res) => {
     };
 
     if (
-      !payload.firstName ||
-      !payload.middleName ||
-      !payload.lastName ||
-      !payload.phone ||
-      !payload.organization ||
-      !payload.sex ||
-      !payload.graduatedField ||
-      !payload.currentJob ||
-      !payload.subCity ||
-      !payload.woreda ||
-      !payload.specificPlace ||
-      !payload.nearChurch ||
+      !payload.firstName &&
+      !payload.middleName &&
+      !payload.lastName &&
+      !payload.phone &&
+      !payload.organization &&
+      !payload.sex &&
+      !payload.graduatedField &&
+      !payload.currentJob &&
+      !payload.subCity &&
+      !payload.woreda &&
+      !payload.specificPlace &&
+      !payload.nearChurch &&
       !payload.houseType
     ) {
       return res.status(400).json({ message: "⚠️ እባክዎ ሁሉንም ቅጾች ይሙሉ ! ⚠️" });
@@ -156,7 +156,7 @@ router.post("/", async (req, res) => {
       firstName: payload.firstName,
       middleName: payload.middleName,
       lastName: payload.lastName,
-      normalizedPhone: payload.normalizedPhone,
+      phone: payload.phone,
     });
 
     if (existing) {

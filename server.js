@@ -31,12 +31,6 @@ connectDB();
 
 const app = express();
 
-// app.use(
-//   cors({
-//     origin: "https://economybetesebsocialdeputiespage.vercel.app",
-//     credentials: true,
-//   }),
-// );
 const allowedOrigins = [
   "http://localhost:5173",
   "https://economybetesebsocialdeputiespage.vercel.app",
