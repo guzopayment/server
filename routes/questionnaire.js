@@ -180,13 +180,9 @@ router.post("/", async (req, res) => {
   } catch (err) {
     console.error("QUESTIONNAIRE CREATE ERROR:", err);
 
-    if (
-      (err?.code === 11000 && err?.keyPattern?.firstName) ||
-      (err?.code === 11000 && err?.keyPattern.middleName) ||
-      (err?.code === 11000 && err?.keyPattern.lastName)
-    ) {
+    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
       return res.status(409).json({
-        message: "ይህ ስም ከዚህ በፊት ተመዝግቧል።",
+        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
       });
     }
 
@@ -284,18 +280,14 @@ router.put("/:id", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("QUESTIONNAIRE UPDATE ERROR:", err);
 
-    if (
-      (err?.code === 11000 && err?.keyPattern?.firstName) ||
-      (err?.code === 11000 && err?.keyPattern.middleName) ||
-      (err?.code === 11000 && err?.keyPattern.lastName)
-    ) {
+    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
       return res.status(409).json({
-        message: "ይህ ስም  ከዚህ በፊት ተመዝግቧል።",
+        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
       });
     }
 
     return res.status(500).json({
-      message: "የኢንተርኔት ግንኙነት ተቋርጧል ወይም ተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
+      message: "የተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
     });
   }
 });
