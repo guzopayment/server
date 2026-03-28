@@ -54,6 +54,12 @@ const safeFilePart = (value = "") =>
     .replace(/^_+|_+$/g, "")
     .slice(0, 40) || "all";
 
+const normalizeName = (value = "") =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
 /* =========================
    EXPORT HELPERS
 ========================= */
@@ -116,6 +122,10 @@ router.post("/", async (req, res) => {
       middleName: (req.body.middleName || "").trim(),
       lastName: (req.body.lastName || "").trim(),
 
+      normalizedFirstName: normalizeName(req.body.firstName),
+      normalizedMiddleName: normalizeName(req.body.middleName),
+      normalizedLastName: normalizeName(req.body.lastName),
+
       phone: rawPhone,
       normalizedPhone: normalizePhone(rawPhone),
 
@@ -153,10 +163,9 @@ router.post("/", async (req, res) => {
     }
 
     const existing = await Questionnaire.findOne({
-      firstName: payload.firstName,
-      middleName: payload.middleName,
-      lastName: payload.lastName,
-      phone: payload.phone,
+      normalizedFirstName: payload.normalizedFirstName,
+      normalizedMiddleName: payload.normalizedMiddleName,
+      normalizedLastName: payload.normalizedLastName,
     });
 
     if (existing) {
@@ -180,9 +189,14 @@ router.post("/", async (req, res) => {
   } catch (err) {
     console.error("QUESTIONNAIRE CREATE ERROR:", err);
 
-    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
+    if (
+      err?.code === 11000 &&
+      (err?.keyPattern?.normalizedFirstName ||
+        err?.keyPattern?.normalizedMiddleName ||
+        err?.keyPattern?.normalizedLastName)
+    ) {
       return res.status(409).json({
-        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
+        message: "⚠️ ይህ ሰው ከዚህ በፊት ተመዝግቧል! ⚠️",
       });
     }
 
@@ -212,13 +226,22 @@ router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const updateData = {
       ...(req.body.firstName !== undefined
-        ? { firstName: String(req.body.firstName).trim() }
+        ? {
+            firstName: String(req.body.firstName).trim(),
+            normalizedFirstName: normalizeName(req.body.firstName),
+          }
         : {}),
       ...(req.body.middleName !== undefined
-        ? { middleName: String(req.body.middleName).trim() }
+        ? {
+            middleName: String(req.body.middleName).trim(),
+            normalizedMiddleName: normalizeName(req.body.middleName),
+          }
         : {}),
       ...(req.body.lastName !== undefined
-        ? { lastName: String(req.body.lastName).trim() }
+        ? {
+            lastName: String(req.body.lastName).trim(),
+            normalizedLastName: normalizeName(req.body.lastName),
+          }
         : {}),
       ...(req.body.phone !== undefined
         ? {
@@ -266,6 +289,32 @@ router.put("/:id", authMiddleware, async (req, res) => {
         : {}),
     };
 
+    const current = await Questionnaire.findById(req.params.id);
+
+    if (!current) {
+      return res.status(404).json({ message: "Questionnaire not found" });
+    }
+
+    const nextFirstName =
+      updateData.normalizedFirstName || current.normalizedFirstName;
+    const nextMiddleName =
+      updateData.normalizedMiddleName || current.normalizedMiddleName;
+    const nextLastName =
+      updateData.normalizedLastName || current.normalizedLastName;
+
+    const duplicateByName = await Questionnaire.findOne({
+      _id: { $ne: req.params.id },
+      normalizedFirstName: nextFirstName,
+      normalizedMiddleName: nextMiddleName,
+      normalizedLastName: nextLastName,
+    });
+
+    if (duplicateByName) {
+      return res.status(409).json({
+        message: "⚠️ ይህ ሰው ከዚህ በፊት ተመዝግቧል! ⚠️",
+      });
+    }
+
     const updated = await Questionnaire.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -280,14 +329,19 @@ router.put("/:id", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("QUESTIONNAIRE UPDATE ERROR:", err);
 
-    if (err?.code === 11000 && err?.keyPattern?.normalizedPhone) {
+    if (
+      err?.code === 11000 &&
+      (err?.keyPattern?.normalizedFirstName ||
+        err?.keyPattern?.normalizedMiddleName ||
+        err?.keyPattern?.normalizedLastName)
+    ) {
       return res.status(409).json({
-        message: "ስልክ ቁጥሩ ከዚህ በፊት ተመዝግቧል።",
+        message: "⚠️ ይህ ሰው ከዚህ በፊት ተመዝግቧል! ⚠️",
       });
     }
 
     return res.status(500).json({
-      message: "የተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
+      message: "የኢንተርኔት ግንኙነት ተቋርጧል ወይም የተሳሳተ ነገር ተከስቷል። እባክዎ እንደገና ይሞክሩ።",
     });
   }
 });

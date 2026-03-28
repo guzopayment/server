@@ -6,8 +6,12 @@ const questionnaireSchema = new mongoose.Schema(
     middleName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
 
+    normalizedFirstName: { type: String, required: true, trim: true },
+    normalizedMiddleName: { type: String, required: true, trim: true },
+    normalizedLastName: { type: String, required: true, trim: true },
+
     phone: { type: String, required: true, trim: true },
-    normalizedPhone: { type: String, required: true, unique: true, trim: true },
+    normalizedPhone: { type: String, required: true, trim: true },
 
     altPhone: { type: String, default: "", trim: true },
     normalizedAltPhone: { type: String, default: "", trim: true },
@@ -28,6 +32,16 @@ const questionnaireSchema = new mongoose.Schema(
     houseType: { type: String, required: true, trim: true },
   },
   { timestamps: true },
+);
+
+
+questionnaireSchema.index(
+  {
+    normalizedFirstName: 1,
+    normalizedMiddleName: 1,
+    normalizedLastName: 1,
+  },
+  { unique: true, name: "unique_person_full_name" },
 );
 
 const Questionnaire = mongoose.model("Questionnaire", questionnaireSchema);
