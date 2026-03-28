@@ -698,4 +698,76 @@ router.get("/export/pdf/by-subcity", authMiddleware, async (req, res) => {
   }
 });
 
+/* =========================
+   ANALYTICS SUMMARY
+========================= */
+router.get("/analytics/summary", authMiddleware, async (req, res) => {
+  try {
+    const total = await Questionnaire.countDocuments();
+
+    const bySubCityAgg = await Questionnaire.aggregate([
+      {
+        $group: {
+          _id: "$subCity",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const bySexAgg = await Questionnaire.aggregate([
+      {
+        $group: {
+          _id: "$sex",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byHouseTypeAgg = await Questionnaire.aggregate([
+      {
+        $group: {
+          _id: "$houseType",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byOrganizationAgg = await Questionnaire.aggregate([
+      {
+        $group: {
+          _id: "$organization",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    return res.json({
+      total,
+      bySubCity: bySubCityAgg.map((x) => ({
+        name: x._id || "Unknown",
+        count: x.count,
+      })),
+      bySex: bySexAgg.map((x) => ({
+        name: x._id || "Unknown",
+        count: x.count,
+      })),
+      byHouseType: byHouseTypeAgg.map((x) => ({
+        name: x._id || "Unknown",
+        count: x.count,
+      })),
+      topOrganizations: byOrganizationAgg.map((x) => ({
+        name: x._id || "Unknown",
+        count: x.count,
+      })),
+    });
+  } catch (err) {
+    console.error("QUESTIONNAIRE ANALYTICS ERROR:", err);
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+});
 export default router;
