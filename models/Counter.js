@@ -1,0 +1,13 @@
+import mongoose from "mongoose";
+
+const counterSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, unique: true, trim: true },
+    seq: { type: Number, default: -1 },
+  },
+  { timestamps: true },
+);
+
+const Counter = mongoose.model("Counter", counterSchema);
+
+export default Counter;
