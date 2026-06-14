@@ -1,4 +1,3 @@
-
 import express from "express";
 import multer from "multer";
 import fs from "fs/promises";
@@ -69,7 +68,9 @@ async function storePaymentProof(file) {
 }
 
 function normalizeText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildClientStatusMessage(booking) {
@@ -81,7 +82,6 @@ function buildClientStatusMessage(booking) {
   }
   return `${booking.name || "Your booking"}, your payment proof is still waiting for admin review.`;
 }
-
 
 const publicProjection = {
   name: 1,
@@ -117,10 +117,13 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
 
     const parsedParticipants = Number(participants || 0);
     if (!Number.isFinite(parsedParticipants) || parsedParticipants <= 0) {
-      return res.status(400).json({ message: "Participants must be greater than 0" });
+      return res
+        .status(400)
+        .json({ message: "Participants must be greater than 0" });
     }
 
-    const participantPayload = participantDetails || additionalParticipants || "[]";
+    const participantPayload =
+      participantDetails || additionalParticipants || "[]";
     let parsedParticipantDetails = [];
     try {
       parsedParticipantDetails =
@@ -136,9 +139,11 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
           name: normalizeText(participant?.name),
           phone: normalizeText(participant?.phone),
           organization:
-            normalizeText(participant?.organization) || normalizeText(organization),
+            normalizeText(participant?.organization) ||
+            normalizeText(organization),
           sex: normalizeText(participant?.sex),
-          subCity: normalizeText(participant?.subCity) || normalizeText(subCity),
+          subCity:
+            normalizeText(participant?.subCity) || normalizeText(subCity),
         }))
       : [];
 
@@ -286,11 +291,16 @@ router.get("/", adminAuth, async (req, res) => {
   }
 });
 
-
 router.get("/public/recent", async (req, res) => {
   try {
-    const limit = Math.min(Math.max(parseInt(req.query.limit || "12", 10), 1), 40);
-    const rows = await Booking.find({}, publicProjection).sort({ updatedAt: -1 }).limit(limit).lean();
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit || "12", 10), 1),
+      40,
+    );
+    const rows = await Booking.find({}, publicProjection)
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean();
     res.json(
       rows.map((row) => ({
         ...row,
@@ -299,14 +309,18 @@ router.get("/public/recent", async (req, res) => {
     );
   } catch (err) {
     console.error("GET /bookings/public/recent error:", err);
-    res.status(500).json({ message: err.message || "Server error" });
+    res
+      .status(500)
+      .json({ message: err.message || "የሲስተም ችግር። | Server error" });
   }
 });
 
 router.get("/public/status", async (req, res) => {
   try {
     const name = normalizeText(req.query.name || "");
-    const phone = normalizeText(req.query.phone || "").replace(/\D/g, "").slice(0, 10);
+    const phone = normalizeText(req.query.phone || "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
     const organization = normalizeText(req.query.organization || "");
 
     const query = {};
@@ -315,23 +329,38 @@ router.get("/public/status", async (req, res) => {
     if (organization) query.organization = organization;
 
     if (!Object.keys(query).length) {
-      return res.status(400).json({ message: "Please enter at least one field to check status." });
+      return res.status(400).json({
+        message:
+          "እባክዎ ቢያንስ አንዱን ቦታ ይሙሉ።| Please enter at least one field to check status.",
+      });
     }
 
-    const rows = await Booking.find(query, publicProjection).sort({ updatedAt: -1 }).limit(20).lean();
+    const rows = await Booking.find(query, publicProjection)
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean();
 
     if (!rows.length) {
-      let missing = "This submission is not registered.";
-      if (phone) missing = "This phone number is not registered.";
-      else if (name) missing = "This name is not registered.";
-      else if (organization) missing = "This organization is not registered.";
+      let missing =
+        "ይህን የቤተሰብ ጉዞ መረጃ አልተመዘገበም። | This booking information is not registered.";
+      if (phone)
+        missing =
+          "ይህን ስልክ ቁጥር አልተመዘገበም። | This phone number is not registered.";
+      else if (name)
+        missing = "ይህን ስም አልተመዘገበም። | This name is not registered.";
+      else if (organization)
+        missing = "ይህን ድርጅት አልተመዘገበም። | This organization is not registered.";
       return res.status(404).json({ message: missing });
     }
 
-    res.json(rows.map((row) => ({ ...row, message: buildClientStatusMessage(row) })));
+    res.json(
+      rows.map((row) => ({ ...row, message: buildClientStatusMessage(row) })),
+    );
   } catch (err) {
     console.error("GET /bookings/public/status error:", err);
-    res.status(500).json({ message: err.message || "Server error" });
+    res
+      .status(500)
+      .json({ message: err.message || "የሲስተም ችግር | Server error" });
   }
 });
 
