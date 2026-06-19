@@ -75,12 +75,12 @@ function normalizeText(value) {
 
 function buildClientStatusMessage(booking) {
   if (booking.status === "Confirmed") {
-    return `${booking.name || "የክፍያ ማስረጃዎ "}, በአስተዳድሩ ተረጋግጦ ጸድቋል። | Your payment proof has been accepted by admin.`;
+    return `${booking.name || "የክፍያ ማስረጃዎ "}, የክፍያ ማስረጃዎ በአስተዳድሩ ተረጋግጦ ጸድቋል። | Your payment proof has been accepted by admin.`;
   }
   if (booking.status === "Rejected") {
-    return `${booking.name || "የክፍያ ማስረጃዎ "}, በአስተዳደሩ ተረጋግጦ ውድቅ ሆኗል። እባክዎ እንደገና ያስገቡ | Your payment proof has been rejected. Please contact the admin or resubmit the correct proof.`;
+    return `${booking.name || "የክፍያ ማስረጃዎ "},የክፍያ ማስረጃዎ በአስተዳደሩ ተረጋግጦ ውድቅ ሆኗል። እባክዎ እንደገና ያስገቡ | Your payment proof has been rejected. Please contact the admin or resubmit the correct proof.`;
   }
-  return `${booking.name || "የክፍያ ማስረጃዎ "}, እስከአሁን የአስተደድሩን ምልከታ እየጠበቀ ነው። |Your payment proof is still waiting for admin review.`;
+  return `${booking.name || "የክፍያ ማስረጃዎ "},የክፍያ ማስረጃዎ እስከአሁን የአስተደድሩን ምልከታ እየጠበቀ ነው። |Your payment proof is still waiting for admin review.`;
 }
 
 const publicProjection = {
@@ -121,12 +121,10 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
 
     const parsedParticipants = Number(participants || 0);
     if (!Number.isFinite(parsedParticipants) || parsedParticipants <= 0) {
-      return res
-        .status(400)
-        .json({
-          message:
-            " የተሳታፊ ቁጥር አንድ እና ከአንድ በላይ መሆን አለበት | Participants must be greater than 0",
-        });
+      return res.status(400).json({
+        message:
+          " የተሳታፊ ቁጥር አንድ እና ከአንድ በላይ መሆን አለበት | Participants must be greater than 0",
+      });
     }
 
     const participantPayload =

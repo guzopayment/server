@@ -37,6 +37,7 @@ const allowedOrigins = [
   "https://economybetesebguzopayment.vercel.app",
   "https://economybetesebguzopayementproofsubmitting.vercel.app",
   "https://economyguzopayementproofsubmitting.vercel.app",
+  "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://booking-payment-client.vercel.app",
 ];
 
