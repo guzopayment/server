@@ -7,12 +7,12 @@ const router = express.Router();
 
 function buildClientStatusMessage(booking) {
   if (booking.status === "Confirmed") {
-    return `${booking.name || "Your booking"}, your payment proof has been accepted by admin.`;
+    return `${booking.name || "Your submission"}, your booking verification image has been approved by admin.`;
   }
   if (booking.status === "Rejected") {
-    return `${booking.name || "Your booking"}, your payment proof has been rejected. Please contact the admin or resubmit the correct proof.`;
+    return `${booking.name || "Your submission"}, your booking verification image has been rejected. Please contact the admin or resubmit the correct image.`;
   }
-  return `${booking.name || "Your booking"}, your payment proof is still waiting for admin review.`;
+  return `${booking.name || "Your submission"}, your booking verification image is still waiting for admin review.`;
 }
 
 router.get("/stats", authMiddleware, async (_req, res) => {
@@ -63,9 +63,9 @@ router.put("/bookings/:id", authMiddleware, async (req, res) => {
       { new: true },
     );
 
-    if (!updated) return res.status(404).json({ message: "Booking not found" });
+    if (!updated) return res.status(404).json({ message: "Submission not found" });
 
-    res.json({ message: "Updated", booking: updated });
+    res.json({ message: "Submission updated successfully", booking: updated });
   } catch (err) {
     console.error("Update booking error:", err);
     res.status(500).json({ message: "Server error" });
@@ -79,7 +79,7 @@ router.put("/confirm/:id", authMiddleware, async (req, res) => {
       { status: "Confirmed", statusUpdatedAt: new Date(), action: "Confirmed" },
       { new: true },
     );
-    if (!updated) return res.status(404).json({ message: "Booking not found" });
+    if (!updated) return res.status(404).json({ message: "Submission not found" });
     const io = getIO?.();
     if (io) {
       io.emit("bookingUpdated", updated);
@@ -93,7 +93,7 @@ router.put("/confirm/:id", authMiddleware, async (req, res) => {
         updatedAt: updated.statusUpdatedAt || updated.updatedAt,
       });
     }
-    res.json({ msg: "Confirmed", booking: updated });
+    res.json({ msg: "Verification approved", booking: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -106,7 +106,7 @@ router.put("/reject/:id", authMiddleware, async (req, res) => {
       { status: "Rejected", statusUpdatedAt: new Date(), action: "Rejected" },
       { new: true },
     );
-    if (!updated) return res.status(404).json({ message: "Booking not found" });
+    if (!updated) return res.status(404).json({ message: "Submission not found" });
     const io = getIO?.();
     if (io) {
       io.emit("bookingUpdated", updated);
@@ -120,7 +120,7 @@ router.put("/reject/:id", authMiddleware, async (req, res) => {
         updatedAt: updated.statusUpdatedAt || updated.updatedAt,
       });
     }
-    res.json({ msg: "Rejected", booking: updated });
+    res.json({ msg: "Verification rejected", booking: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -27,7 +27,7 @@ function safeFileName(name = "proof.jpg") {
 }
 
 async function storePaymentProof(file) {
-  if (!file) throw new Error("Payment proof file is required");
+  if (!file) throw new Error("Verification image file is required");
 
   if (useLocalUpload) {
     const uploadDir = path.join(process.cwd(), "uploads", "payment-proofs");
@@ -73,29 +73,14 @@ function normalizeText(value) {
     .trim();
 }
 
-function escapeRegex(value) {
-  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function findActiveDuplicateBooking({ name, organization, phone }) {
-  return Booking.findOne({
-    phone,
-    status: { $in: ["Pending", "Confirmed"] },
-    name: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
-    organization: { $regex: `^${escapeRegex(organization)}$`, $options: "i" },
-  })
-    .select("_id status createdAt updatedAt")
-    .lean();
-}
-
 function buildClientStatusMessage(booking) {
   if (booking.status === "Confirmed") {
-    return `${booking.name || "የክፍያ ማስረጃዎ "},የክፍያ ማስረጃዎ በአስተዳድሩ ተረጋግጦ ጸድቋል። | Your payment proof has been accepted by admin.`;
+    return `${booking.name || "የማረጋገጫ ምስልዎ"}, ያስገቡት የጉዞ ማረጋገጫ ምስል በአስተዳድሩ ተረጋግጦ ጸድቋል። | Your booking verification image has been approved by the admin team.`;
   }
   if (booking.status === "Rejected") {
-    return `${booking.name || "የክፍያ ማስረጃዎ "},የክፍያ ማስረጃዎ በአስተዳደሩ ተረጋግጦ ውድቅ ሆኗል። እባክዎ እንደገና ያስገቡ | Your payment proof has been rejected. Please contact the admin or resubmit the correct proof.`;
+    return `${booking.name || "የማረጋገጫ ምስልዎ"}, ያስገቡት የጉዞ ማረጋገጫ ምስል ውድቅ ሆኗል። እባክዎ ትክክለኛውን ምስል እንደገና ያስገቡ። | Your booking verification image was rejected. Please resubmit the correct image.`;
   }
-  return `${booking.name || "የክፍያ ማስረጃዎ "},የክፍያ ማስረጃዎ እስከአሁን የአስተደድሩን ምልከታ እየጠበቀ ነው። |Your payment proof is still waiting for admin review.`;
+  return `${booking.name || "የማረጋገጫ ምስልዎ"}, ያስገቡት የጉዞ ማረጋገጫ ምስል አሁንም የአስተዳድሩን ምርመራ እየጠበቀ ነው። | Your booking verification image is still waiting for admin review.`;
 }
 
 const publicProjection = {
@@ -131,7 +116,7 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
     if (!req.file) {
       return res
         .status(400)
-        .json({ message: "የክፍያ ማስረጃ ያስፈልጋል | Payment proof is required" });
+        .json({ message: "የማረጋገጫ ምስል ያስፈልጋል | Verification image is required" });
     }
 
     const parsedParticipants = Number(participants || 0);
@@ -154,46 +139,27 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
       parsedParticipantDetails = [];
     }
 
-    const normalizedName = normalizeText(name);
-    const normalizedOrganization = normalizeText(organization);
-    const normalizedPhone = normalizeText(phone);
-    const normalizedSex = normalizeText(sex);
-    const normalizedSubCity = normalizeText(subCity);
-
     const cleanedParticipantDetails = Array.isArray(parsedParticipantDetails)
       ? parsedParticipantDetails.map((participant) => ({
           name: normalizeText(participant?.name),
           phone: normalizeText(participant?.phone),
           organization:
-            normalizeText(participant?.organization) || normalizedOrganization,
+            normalizeText(participant?.organization) ||
+            normalizeText(organization),
           sex: normalizeText(participant?.sex),
-          subCity: normalizeText(participant?.subCity) || normalizedSubCity,
+          subCity:
+            normalizeText(participant?.subCity) || normalizeText(subCity),
         }))
       : [];
-
-    const existingActiveBooking = await findActiveDuplicateBooking({
-      name: normalizedName,
-      organization: normalizedOrganization,
-      phone: normalizedPhone,
-    });
-
-    if (existingActiveBooking) {
-      const duplicateStatusLabel =
-        existingActiveBooking.status === "Confirmed" ? "ጸድቋል" : "በመጠባበቅ ላይ ነው";
-
-      return res.status(409).json({
-        message: `ይህ ስም፣ ድርጅት እና ስልክ ቁጥር ያለው መረጃ አስቀድሞ ተመዝግቧል። ያለው ሁኔታ: ${duplicateStatusLabel}። ውድቅ ካልሆነ ድጋሚ ማስገባት አይቻልም። | A booking with the same name, organization, and phone number already exists with status ${existingActiveBooking.status}. Resubmission is allowed only after rejection.`,
-      });
-    }
 
     const uploadResult = await storePaymentProof(req.file);
 
     const booking = await Booking.create({
-      name: normalizedName,
-      organization: normalizedOrganization,
-      phone: normalizedPhone,
-      sex: normalizedSex,
-      subCity: normalizedSubCity,
+      name: normalizeText(name),
+      organization: normalizeText(organization),
+      phone: normalizeText(phone),
+      sex: normalizeText(sex),
+      subCity: normalizeText(subCity),
       participants: parsedParticipants,
       participantDetails: cleanedParticipantDetails,
       paymentProof: uploadResult.secure_url,
@@ -217,13 +183,13 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
     }
 
     return res.status(201).json({
-      message: "Booking submitted successfully",
+      message: "Booking verification submitted successfully",
       booking,
     });
   } catch (error) {
-    console.error("BOOKING CREATE ERROR:", error);
+    console.error("BOOKING VERIFICATION CREATE ERROR:", error);
     return res.status(500).json({
-      message: error.message || "Failed to create booking",
+      message: error.message || "Failed to submit booking verification",
     });
   }
 });

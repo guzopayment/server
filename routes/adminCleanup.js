@@ -6,13 +6,13 @@ const router = express.Router();
 
 /**
  * DELETE /api/admin/bookings/:id
- * Delete a single booking by id (admin only)
+ * Delete a single submission by id (admin only)
  */
 router.delete("/bookings/:id", auth, async (req, res) => {
   try {
     const deleted = await Booking.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Booking not found" });
-    res.json({ message: "Deleted", id: req.params.id });
+    if (!deleted) return res.status(404).json({ message: "Submission not found" });
+    res.json({ message: "Submission deleted successfully", id: req.params.id });
   } catch (err) {
     console.error("Delete booking error:", err);
     res.status(500).json({ message: "Server error" });
@@ -21,7 +21,7 @@ router.delete("/bookings/:id", auth, async (req, res) => {
 
 /**
  * DELETE /api/admin/bookings/cleanup
- * Deletes: Rejected OR missing proof OR invalid proof
+ * Deletes: rejected OR missing verification image OR invalid verification image
  */
 router.delete("/bookings/cleanup", auth, async (req, res) => {
   try {
@@ -36,7 +36,7 @@ router.delete("/bookings/cleanup", auth, async (req, res) => {
       ],
     });
 
-    res.json({ message: "Cleanup done", deletedCount: result.deletedCount });
+    res.json({ message: "Verification cleanup completed", deletedCount: result.deletedCount });
   } catch (err) {
     console.error("Cleanup error:", err);
     res.status(500).json({ message: "Server error" });
