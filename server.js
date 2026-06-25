@@ -39,6 +39,7 @@ const allowedOrigins = [
   "https://economyguzopayementproofsubmitting.vercel.app",
   "https://booking-payment-client.vercel.app",
   "https://guzoticketbookingproofsubmitting.vercel.app",
+  "https://guzoticketbookingimagesubmitting.vercel.app",
 ];
 
 const corsOptions = {
