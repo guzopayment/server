@@ -101,31 +101,32 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
       organization,
       phone,
       sex,
-      subCity,
+      // subCity,
       participants,
       participantDetails,
-      additionalParticipants,
+      // additionalParticipants,
     } = req.body;
 
-    if (!name || !organization || !phone || !participants) {
+    if (!name || !organization || !phone) {
+      //|| !participants
       return res
         .status(400)
         .json({ message: "አስፈላጊ ፊልዶች አልተሟሉም | Missing required fields" });
     }
 
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ message: "የማረጋገጫ ምስል ያስፈልጋል | Verification image is required" });
-    }
+    // if (!req.file) {
+    //   return res.status(400).json({
+    //     message: "የማረጋገጫ ምስል ያስፈልጋል | Verification image is required",
+    //   });
+    // }
 
-    const parsedParticipants = Number(participants || 0);
-    if (!Number.isFinite(parsedParticipants) || parsedParticipants <= 0) {
-      return res.status(400).json({
-        message:
-          " የተሳታፊ ቁጥር አንድ እና ከአንድ በላይ መሆን አለበት | Participants must be greater than 0",
-      });
-    }
+    // const parsedParticipants = Number(participants || 0);
+    // if (!Number.isFinite(parsedParticipants) || parsedParticipants <= 0) {
+    //   return res.status(400).json({
+    //     message:
+    //       " የተሳታፊ ቁጥር አንድ እና ከአንድ በላይ መሆን አለበት | Participants must be greater than 0",
+    //   });
+    // }
 
     const participantPayload =
       participantDetails || additionalParticipants || "[]";
@@ -147,27 +148,27 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
             normalizeText(participant?.organization) ||
             normalizeText(organization),
           sex: normalizeText(participant?.sex),
-          subCity:
-            normalizeText(participant?.subCity) || normalizeText(subCity),
+          // subCity:
+          //   normalizeText(participant?.subCity) || normalizeText(subCity),
         }))
       : [];
 
-    const uploadResult = await storePaymentProof(req.file);
+    // const uploadResult = await storePaymentProof(req.file);
 
     const booking = await Booking.create({
       name: normalizeText(name),
       organization: normalizeText(organization),
       phone: normalizeText(phone),
       sex: normalizeText(sex),
-      subCity: normalizeText(subCity),
-      participants: parsedParticipants,
+      // subCity: normalizeText(subCity),
+      // participants: parsedParticipants,
       participantDetails: cleanedParticipantDetails,
-      paymentProof: uploadResult.secure_url,
-      paymentProofPublicId: uploadResult.public_id,
-      paymentProofStorageType: uploadResult.storageType,
-      status: "Pending",
-      action: "Submitted",
-      statusUpdatedAt: new Date(),
+      // paymentProof: uploadResult.secure_url,
+      // paymentProofPublicId: uploadResult.public_id,
+      // paymentProofStorageType: uploadResult.storageType,
+      // status: "Pending",
+      // action: "Submitted",
+      // statusUpdatedAt: new Date(),
     });
 
     const io = getIO?.();
@@ -178,7 +179,7 @@ router.post("/", upload.single("paymentProof"), async (req, res) => {
         name: booking.name,
         organization: booking.organization,
         participants: booking.participants,
-        status: booking.status,
+        // status: booking.status,
       });
     }
 
@@ -210,8 +211,8 @@ router.post("/statuses", async (req, res) => {
       bookings: rows.map((booking) => ({
         bookingId: String(booking._id),
         name: booking.name || "",
-        status: booking.status || "Pending",
-        action: booking.action || "",
+        // status: booking.status || "Pending",
+        // action: booking.action || "",
         updatedAt:
           booking.statusUpdatedAt || booking.updatedAt || booking.createdAt,
         message: buildClientStatusMessage(booking),
