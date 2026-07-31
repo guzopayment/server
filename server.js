@@ -40,6 +40,7 @@ const allowedOrigins = [
   "https://booking-payment-client.vercel.app",
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
+  "https://gubae-beteseb.vercel.app",
 ];
 
 const corsOptions = {
