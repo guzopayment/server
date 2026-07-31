@@ -22,6 +22,17 @@ router.post("/participants", async (req, res) => {
     console.error("Create participant error:", err);
     res.status(500).json({ message: "Server error" });
   }
+  const existing = await Participant.findOne({
+    name,
+    organization,
+    phone,
+    sex,
+  });
+  if (existing) {
+    return res.status(409).json({
+      message: "⚠️ ይህ ስም ከዚህ በፊት ተመዝግቧል! ⚠️",
+    });
+  }
 });
 
 // ADMIN: stats — total, men, women, total organizations

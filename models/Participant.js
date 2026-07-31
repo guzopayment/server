@@ -44,4 +44,6 @@ const participantSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export default mongoose.model("Participant", participantSchema);
+// export default mongoose.
+const Participant = mongoose.model("Participant", participantSchema);
+export default Participant;
