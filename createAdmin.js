@@ -34,7 +34,7 @@ const run = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB connected");
 
-    const email = "admin@economybeteseb.com";
+    const email = "admin@gubaebeteseb.com";
     const existing = await Admin.findOne({ email });
 
     if (existing) {
@@ -45,7 +45,7 @@ const run = async () => {
     const admin = await Admin.create({
       name: "Admin",
       email: email.toLowerCase(),
-      password: "Admin23c0n0myb3t343b",
+      password: "Admin2guba3B3t343b",
     });
 
     console.log("Admin created:", admin);
