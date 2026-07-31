@@ -18,6 +18,7 @@ import adminRoutes from "./routes/admin.js";
 import adminDebugRoutes from "./routes/adminDebug.js";
 import adminCleanupRoutes from "./routes/adminCleanup.js";
 import { initSocket } from "./utils/socket.js";
+import participantRoutes from "./routes/participantRoutes.js";
 
 console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
 console.log("MONGO_URI preview:", process.env.MONGO_URI?.slice(0, 25));
@@ -83,7 +84,8 @@ app.use((req, res, next) => {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+// app.use("/uploads", express.static("uploads"));
+app.use("/api", participantRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {
