@@ -1460,7 +1460,7 @@ router.post("/", async (req, res) => {
     // Name match is case-insensitive since the same person may type casing differently.
     const existing = await Booking.findOne({
       name: new RegExp(`^${escapeRegex(cleanName)}$`, "i"),
-      organization: cleanOrganization,
+      // organization: cleanOrganization,
       phone: cleanPhone,
     });
 
@@ -1675,7 +1675,7 @@ router.put("/:id", adminAuth, async (req, res) => {
     const duplicate = await Booking.findOne({
       _id: { $ne: req.params.id },
       name: new RegExp(`^${escapeRegex(cleanName)}$`, "i"),
-      organization: cleanOrganization,
+      // organization: cleanOrganization,
       phone: cleanPhone,
     });
 
