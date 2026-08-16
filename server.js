@@ -34,7 +34,6 @@ const app = express();
 
 const allowedOrigins = [
   process.env.SCANNER_ORIGIN,
-  process.env.VITE_API_BASE_URL,
   "http://localhost:5173",
   "http://localhost:5174",
   "https://economybetesebsocialdeputiespage.vercel.app",
@@ -45,7 +44,7 @@ const allowedOrigins = [
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
-  "https://gubae-beteseb-scanner-attendance.vercel.app/",
+  "https://gubae-beteseb-scanner-attendance.vercel.app",
 ].filter(Boolean);
 
 const corsOptions = {
