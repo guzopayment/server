@@ -6,7 +6,6 @@ import { makeQrToken, qrDataUrlForToken } from "../utils/qrService.js";
 
 const router = express.Router();
 
-
 /**
  * ADMIN: scan a participant QR token and mark the participant present.
  * The scanner sends only the QR token; participant details stay in MongoDB.
@@ -15,20 +14,24 @@ router.post("/attendance/scan", adminAuth, async (req, res) => {
   try {
     const qrData = normalizeText(req.body?.qrData || "");
     if (!qrData) {
-      return res.status(400).json({ message: "QR code data is required" });
+      return res
+        .status(400)
+        .json({ message: "QR code data is required | የኪውአር ኮድ መረጃ ያስፈልጋል " });
     }
 
     const booking = await Booking.findOne({ qrToken: qrData });
     if (!booking) {
       return res.status(404).json({
-        message: "Participant not registered or QR code is invalid",
+        message:
+          "Participant not registered or QR code is invalid | ተሳታፊው  አልተመዘገበም ወይም ኪውአር ኮድ የተሳሳተው ነው",
       });
     }
 
     if (booking.attendance?.checkedIn) {
       return res.json({
         alreadyCheckedIn: true,
-        message: "This participant is already marked present.",
+        message:
+          "This participant is already marked present.| ይህ ተሳታፊ አስቀድመው እንደተገኘ ምልክት ተደርጓል ተመዝግቧል",
         participant: {
           id: booking._id,
           name: booking.name,
@@ -56,7 +59,8 @@ router.post("/attendance/scan", adminAuth, async (req, res) => {
 
     return res.json({
       alreadyCheckedIn: false,
-      message: "Participant marked present successfully.",
+      message:
+        "Participant marked present successfully. | ተሳታፊው እንደተገኘ በትክክል ምልክት ተደርጓል ተመዝግቧል",
       participant: {
         id: booking._id,
         name: booking.name,
@@ -68,7 +72,9 @@ router.post("/attendance/scan", adminAuth, async (req, res) => {
   } catch (err) {
     console.error("POST /bookings/attendance/scan error:", err);
     return res.status(500).json({
-      message: err.message || "Failed to record attendance",
+      message:
+        err.message ||
+        "Failed to record attendance | ይህም መረጃ ስላልተመዘገበ ተሳታፊው እንደተገኘ ማስመዝገብ አልተቻለም",
     });
   }
 });
@@ -93,7 +99,10 @@ router.get("/attendance/summary", adminAuth, async (_req, res) => {
     ).length;
     const totalAbsent = total - totalPresent;
 
-    const normalizeSex = (value) => String(value || "").trim().toLowerCase();
+    const normalizeSex = (value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase();
     const isMale = (value) =>
       ["male", "m", "ወንድ", "ወንድ ልጅ"].includes(normalizeSex(value));
     const isFemale = (value) =>
@@ -136,11 +145,12 @@ router.get("/attendance/summary", adminAuth, async (_req, res) => {
   } catch (err) {
     console.error("GET /bookings/attendance/summary error:", err);
     return res.status(500).json({
-      message: err.message || "Failed to load attendance summary",
+      message:
+        err.message ||
+        "Failed to load attendance summary | የተገኘ ምንባብ ማጠቃለያ ማስመዝገብ አልቻለም",
     });
   }
 });
-
 
 /**
  * ADMIN: complete attendance list for export.
