@@ -19,6 +19,7 @@ import adminDebugRoutes from "./routes/adminDebug.js";
 import adminCleanupRoutes from "./routes/adminCleanup.js";
 import { initSocket } from "./utils/socket.js";
 import participantRoutes from "./routes/participantRoutes.js";
+import qrRoutes from "./routes/qrRoutes.js";
 
 console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
 console.log("MONGO_URI preview:", process.env.MONGO_URI?.slice(0, 25));
@@ -32,6 +33,7 @@ connectDB();
 const app = express();
 
 const allowedOrigins = [
+  process.env.SCANNER_ORIGIN,
   "http://localhost:5173",
   "http://localhost:5174",
   "https://economybetesebsocialdeputiespage.vercel.app",
@@ -42,7 +44,7 @@ const allowedOrigins = [
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
-];
+].filter(Boolean);
 
 const corsOptions = {
   origin(origin, callback) {
@@ -104,6 +106,7 @@ app.use("/api/participants", bookingRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/qr", qrRoutes);
 app.use("/api/debug", adminDebugRoutes);
 app.use("/api/admin", adminCleanupRoutes);
 

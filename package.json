@@ -30,7 +30,9 @@
     "react": "^19.2.4",
     "react-router-dom": "^7.13.1",
     "socket.io": "^4.8.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "archiver": "^5.3.2",
+    "qrcode": "^1.5.4"
   },
   "keywords": [],
   "author": "",
