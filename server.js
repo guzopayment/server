@@ -44,6 +44,7 @@ const allowedOrigins = [
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
+  "https://gubae-beteseb-scanner-attendance.vercel.app/",
 ].filter(Boolean);
 
 const corsOptions = {
