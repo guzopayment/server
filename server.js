@@ -33,9 +33,9 @@ connectDB();
 const app = express();
 
 const allowedOrigins = [
-  process.env.SCANNER_ORIGIN,
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://localhost:5175",
   "https://economybetesebsocialdeputiespage.vercel.app",
   "https://economybetesebguzopayment.vercel.app",
   "https://economybetesebguzopayementproofsubmitting.vercel.app",
@@ -44,8 +44,8 @@ const allowedOrigins = [
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
-  "https://gubae-beteseb-scanner-attendance.vercel.app",
-].filter(Boolean);
+  ...(process.env.SCANNER_ORIGIN ? [process.env.SCANNER_ORIGIN] : []),
+];
 
 const corsOptions = {
   origin(origin, callback) {

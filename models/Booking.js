@@ -6,6 +6,7 @@ const participantDetailSchema = new mongoose.Schema(
     phone: { type: String, trim: true, default: "" },
     organization: { type: String, trim: true, default: "" },
     sex: { type: String, trim: true, default: "" },
+    // subCity: { type: String, trim: true, default: "" },
   },
   { _id: false },
 );
@@ -17,10 +18,6 @@ const bookingSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     sex: { type: String, trim: true, default: "" },
     qrToken: { type: String, trim: true, unique: true, sparse: true, default: null },
-    attendance: {
-      checkedIn: { type: Boolean, default: false },
-      checkedInAt: { type: Date, default: null },
-    },
     // subCity: { type: String, trim: true, default: "" },
     // participants: { type: Number, required: true, min: 1 },
 
@@ -47,6 +44,12 @@ const bookingSchema = new mongoose.Schema(
       default: "Submitted",
     },
     statusUpdatedAt: { type: Date, default: null },
+
+    // Event attendance
+    attendance: {
+      checkedIn: { type: Boolean, default: false },
+      checkedInAt: { type: Date, default: null },
+    },
   },
   { timestamps: true },
 );
