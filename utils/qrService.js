@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import QRCode from "qrcode";
 import sharp from "sharp";
@@ -21,32 +20,14 @@ export async function ensureQrToken(booking) {
 }
 
 function qrPayloadFor(booking) {
-  // Never regenerate/replace an existing token. This is important for
-  // already-issued QR codes and scanner compatibility.
+  // NEVER regenerate an existing token. This preserves scanner compatibility.
   return String(booking?.qrToken || makeQrToken(booking?._id));
 }
 
-export async function qrDataUrlForBooking(booking) {
-  return QRCode.toDataURL(qrPayloadFor(booking), {
-    type: "image/png",
-    width: 700,
-    margin: 3,
-    errorCorrectionLevel: "M",
-  });
-}
-
-let fontBase64Promise;
-
-async function getEthiopicFontBase64() {
-  if (!fontBase64Promise) {
-    const fontPath = fileURLToPath(
-      new URL("./NotoSansEthiopic-Regular.ttf", import.meta.url),
-    );
-    fontBase64Promise = fs.readFile(fontPath).then((buffer) =>
-      buffer.toString("base64"),
-    );
-  }
-  return fontBase64Promise;
+function fontPath() {
+  return fileURLToPath(
+    new URL("./NotoSansEthiopic-Regular.ttf", import.meta.url),
+  );
 }
 
 function escapeXml(value) {
@@ -58,10 +39,20 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;");
 }
 
+// Pango markup escaping for Sharp's text renderer.
+function escapePango(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 /*
- * Approximate rendered width for Noto Sans Ethiopic.
- * This is deliberately conservative so Amharic text does not run outside
- * the 760px label. A word that is too long is hard-wrapped by code point.
+ * Estimate rendered width conservatively for Noto Sans Ethiopic so that
+ * participant text stays inside the label. This is only used for wrapping;
+ * Sharp/Pango does the actual glyph rendering.
  */
 function estimatedWidth(text, fontSize) {
   let width = 0;
@@ -98,17 +89,13 @@ function wrapToTwoLines(value, maxWidth, fontSize) {
 
     pushCurrent();
 
-    // A single very long word can still exceed the label. Break it safely.
     if (estimatedWidth(word, fontSize) <= maxWidth) {
       current = word;
     } else {
       let part = "";
       for (const char of word) {
         const candidatePart = part + char;
-        if (
-          part &&
-          estimatedWidth(candidatePart, fontSize) > maxWidth
-        ) {
+        if (part && estimatedWidth(candidatePart, fontSize) > maxWidth) {
           lines.push(part);
           part = char;
         } else {
@@ -118,7 +105,6 @@ function wrapToTwoLines(value, maxWidth, fontSize) {
       current = part;
     }
 
-    // We only need a maximum of two lines.
     if (lines.length >= 2) {
       current = "";
       break;
@@ -126,12 +112,9 @@ function wrapToTwoLines(value, maxWidth, fontSize) {
   }
 
   if (current) lines.push(current);
-
   if (lines.length <= 2) return lines;
 
-  // Defensive fallback: never render more than two lines.
-  const second = lines.slice(1).join(" ");
-  return [lines[0], second];
+  return [lines[0], lines.slice(1).join(" ")];
 }
 
 export function safeFileName(value, fallback = "participant") {
@@ -145,9 +128,8 @@ export function safeFileName(value, fallback = "participant") {
   return cleaned || fallback;
 }
 
-// Header filenames must be ASCII-safe. Never put an Amharic participant or
-// organization name into Content-Disposition: it can cause HTTP 500 errors
-// on some Node/serverless response implementations.
+// HTTP Content-Disposition must remain ASCII-safe. Do not put Amharic names
+// or organization names into this header.
 export function safeHeaderFileName(value, fallback = "gubae-qr-codes") {
   const ascii = String(value || "")
     .normalize("NFKD")
@@ -161,10 +143,42 @@ export function safeHeaderFileName(value, fallback = "gubae-qr-codes") {
   return ascii || fallback;
 }
 
+async function renderTextPng(text, { width, height, fontSize, color }) {
+  if (!text) return null;
+
+  // IMPORTANT: Sharp/libvips does NOT support embedded SVG fonts reliably.
+  // Using Sharp's fontfile option loads the bundled TTF directly through
+  // Pango/fontconfig and therefore works on Render/Linux as well as locally.
+  return sharp({
+    text: {
+      text: `<span size="${Math.round(fontSize * 1000)}" foreground="${color}">${escapePango(text)}</span>`,
+      font: "Noto Sans Ethiopic",
+      fontfile: fontPath(),
+      width,
+      height,
+      align: "center",
+      rgba: true,
+      wrap: "word",
+      spacing: 2,
+    },
+  })
+    .png()
+    .toBuffer();
+}
+
+/**
+ * ONE renderer for every QR image in the application:
+ * - individual QR download
+ * - Share / existing participant QR
+ * - new participant registration response
+ * - ZIP generation
+ *
+ * The QR payload itself is kept unchanged. Only the visual presentation is
+ * changed by adding the participant's Amharic name and organization.
+ */
 export async function qrPngFor(booking) {
   const token = qrPayloadFor(booking);
 
-  // These are the registered participant fields used by Booking.
   const name = String(booking?.name || "Participant").trim() || "Participant";
   const organization = String(
     booking?.organization ??
@@ -189,80 +203,61 @@ export async function qrPngFor(booking) {
   const orgFontSize = 23;
   const nameLineHeight = 40;
   const orgLineHeight = 32;
-  const topPadding = 20;
-  const between = organization ? 10 : 0;
+  const topPadding = 16;
+  const between = organization ? 8 : 0;
 
-  const nameLines =
-    wrapToTwoLines(name, maxTextWidth, nameFontSize).slice(0, 2);
-  const organizationLines =
-    wrapToTwoLines(organization, maxTextWidth, orgFontSize).slice(0, 2);
+  const nameLines = wrapToTwoLines(name, maxTextWidth, nameFontSize).slice(0, 2);
+  const organizationLines = wrapToTwoLines(
+    organization,
+    maxTextWidth,
+    orgFontSize,
+  ).slice(0, 2);
 
+  const nameHeight = Math.max(1, nameLines.length) * nameLineHeight;
+  const organizationHeight = organizationLines.length * orgLineHeight;
   const labelHeight =
-    topPadding +
-    Math.max(1, nameLines.length) * nameLineHeight +
-    between +
-    organizationLines.length * orgLineHeight +
-    20;
+    topPadding + nameHeight + between + organizationHeight + 16;
 
-  const qrSize = 700;
-  const canvasHeight = labelHeight + qrSize + 30;
+  const canvasHeight = labelHeight + 700 + 30;
   const qrTop = labelHeight;
 
-  const fontBase64 = await getEthiopicFontBase64();
+  const namePng = await renderTextPng(nameLines.join("\n"), {
+    width: maxTextWidth,
+    height: nameHeight,
+    fontSize: nameFontSize,
+    color: "#111827",
+  });
 
-  const nameSvg = nameLines
-    .map(
-      (line, i) =>
-        `<text x="${canvasWidth / 2}" y="${
-          topPadding + nameLineHeight * (i + 1) - 6
-        }" text-anchor="middle" class="name">${escapeXml(line)}</text>`,
-    )
-    .join("\n");
+  const organizationPng = organizationLines.length
+    ? await renderTextPng(organizationLines.join("\n"), {
+        width: maxTextWidth,
+        height: organizationHeight,
+        fontSize: orgFontSize,
+        color: "#374151",
+      })
+    : null;
 
-  const orgStartY =
-    topPadding + Math.max(1, nameLines.length) * nameLineHeight + between;
+  const composite = [
+    {
+      input: namePng,
+      left: sideMargin,
+      top: topPadding,
+    },
+  ];
 
-  const orgSvg = organizationLines
-    .map(
-      (line, i) =>
-        `<text x="${canvasWidth / 2}" y="${
-          orgStartY + orgLineHeight * (i + 1) - 5
-        }" text-anchor="middle" class="organization">${escapeXml(line)}</text>`,
-    )
-    .join("\n");
+  if (organizationPng) {
+    composite.push({
+      input: organizationPng,
+      left: sideMargin,
+      top: topPadding + nameHeight + between,
+    });
+  }
 
-  const labelSvg = `
-    <svg width="${canvasWidth}" height="${labelHeight}"
-         viewBox="0 0 ${canvasWidth} ${labelHeight}"
-         xmlns="http://www.w3.org/2000/svg">
-      <style>
-        @font-face {
-          font-family: 'NotoSansEthiopic';
-          src: url(data:font/ttf;base64,${fontBase64}) format('truetype');
-          font-weight: 400;
-          font-style: normal;
-        }
-
-        .name {
-          font-family: 'NotoSansEthiopic', sans-serif;
-          font-size: ${nameFontSize}px;
-          font-weight: 400;
-          fill: #111827;
-        }
-
-        .organization {
-          font-family: 'NotoSansEthiopic', sans-serif;
-          font-size: ${orgFontSize}px;
-          font-weight: 400;
-          fill: #374151;
-        }
-      </style>
-
-      <rect width="${canvasWidth}" height="${labelHeight}" fill="#ffffff"/>
-      ${nameSvg}
-      ${orgSvg}
-    </svg>
-  `;
+  composite.push({
+    input: qrPng,
+    left: 30,
+    top: qrTop,
+  });
 
   return sharp({
     create: {
@@ -272,10 +267,13 @@ export async function qrPngFor(booking) {
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     },
   })
-    .composite([
-      { input: Buffer.from(labelSvg), left: 0, top: 0 },
-      { input: qrPng, left: 30, top: qrTop },
-    ])
+    .composite(composite)
     .png()
     .toBuffer();
+}
+
+// New registrations use exactly the same renderer as downloads and sharing.
+export async function qrDataUrlForBooking(booking) {
+  const png = await qrPngFor(booking);
+  return `data:image/png;base64,${png.toString("base64")}`;
 }
