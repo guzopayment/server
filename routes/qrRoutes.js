@@ -206,14 +206,9 @@ router.get("/:id", adminAuth, async (req, res) => {
       return res.status(404).json({ message: "Participant not found" });
     await ensureQrToken(booking);
     const png = await qrPngFor(booking);
+    // Keep the HTTP response header ASCII-safe. The React client already
+    // chooses the participant-specific Unicode filename when downloading/sharing.
     res.setHeader("Content-Type", "image/png");
-
-    return res.send(pngBuffer);
-    // res.setHeader("Content-Type", "image/png");
-    // res.setHeader(
-    //   "Content-Disposition",
-    //   `inline; filename="${safeFileName(booking.name)}.png"`,
-    // );
     res.send(png);
   } catch (err) {
     console.error("GET /api/qr/:id ERROR:", {
@@ -224,7 +219,9 @@ router.get("/:id", adminAuth, async (req, res) => {
 
     if (!res.headersSent) {
       return res.status(500).json({
-        message: err.message || "Failed to generate QR | QR ኮድ መፍጠር አልተቻለም",
+        message:
+          err.message ||
+          "Failed to generate QR | QR ኮድ መፍጠር አልተቻለም",
       });
     }
 
