@@ -1494,17 +1494,11 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Generate the participant's QR immediately so a newly registered
-    // participant receives their personal QR on the Thank You page.
-    // This uses the exact same token that the scanner validates.
-    const qrData = makeQrToken(booking._id);
-    const qrDataUrl = await qrDataUrlForBooking(booking);
-
     return res.status(201).json({
       message: "Booking submitted successfully",
       booking,
-      qrData,
-      qrDataUrl,
+      qrData: `GUBAE-EVENT:${booking._id}`,
+      qrDataUrl: await qrDataUrlForBooking(booking),
     });
   } catch (error) {
     console.error("BOOKING CREATE ERROR:", error);

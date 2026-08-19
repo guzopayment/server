@@ -6,13 +6,18 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const ETHIOPIC_FONT_PATH = path.join(__dirname, "fonts", "NotoSansEthiopic-Regular.ttf");
+let ETHIOPIC_FONT_BASE64;
 
-// Bundle an Ethiopic-capable font so Sharp/libvips renders Amharic names
-// correctly on local machines and on Render/Linux servers. Do not rely on
-// whatever fonts happen to be installed on the hosting server.
-const ETHIOPIC_FONT_DATA = fs
-  .readFileSync(path.join(__dirname, "NotoSansEthiopic-Regular.ttf"))
-  .toString("base64");
+function getEthiopicFontBase64() {
+  if (!ETHIOPIC_FONT_BASE64) {
+    if (!fs.existsSync(ETHIOPIC_FONT_PATH)) {
+      throw new Error(`Ethiopic font not found: ${ETHIOPIC_FONT_PATH}`);
+    }
+    ETHIOPIC_FONT_BASE64 = fs.readFileSync(ETHIOPIC_FONT_PATH).toString("base64");
+  }
+  return ETHIOPIC_FONT_BASE64;
+}
 
 export function makeQrToken(id) {
   return `GUBAE-EVENT:${String(id)}`;
@@ -64,29 +69,40 @@ export async function qrPngFor(booking) {
   const canvasWidth = 760;
   const canvasHeight = organization ? 900 : 860;
   const qrTop = organization ? 130 : 105;
+  const fontBase64 = getEthiopicFontBase64();
 
+  // Embed the Ethiopic font directly in the SVG. This is important for Render
+  // and other Linux environments where Arial/Windows Ethiopic fonts may not
+  // exist. It also guarantees that existing participants and new participants
+  // use exactly the same readable Amharic QR artwork.
   const labelSvg = `
     <svg width="${canvasWidth}" height="${qrTop}" viewBox="0 0 ${canvasWidth} ${qrTop}"
          xmlns="http://www.w3.org/2000/svg">
       <style>
         @font-face {
-          font-family: "GubaeEthiopic";
-          src: url(data:font/ttf;base64,${ETHIOPIC_FONT_DATA}) format("truetype");
+          font-family: 'GubaeEthiopic';
+          src: url(data:font/ttf;base64,${fontBase64}) format('truetype');
+          font-weight: 400;
+          font-style: normal;
         }
-        text { font-family: "GubaeEthiopic", sans-serif; }
+        .name {
+          font-family: 'GubaeEthiopic', sans-serif;
+          font-size: 30px;
+          font-weight: 400;
+          fill: #003B46;
+        }
+        .organization {
+          font-family: 'GubaeEthiopic', sans-serif;
+          font-size: 19px;
+          font-weight: 400;
+          fill: #5b6770;
+        }
       </style>
       <rect width="${canvasWidth}" height="${qrTop}" fill="#ffffff"/>
-      <text x="${canvasWidth / 2}" y="42"
-            text-anchor="middle"
-            font-size="28"
-            font-weight="700"
-            fill="#003B46">${escapeXml(name)}</text>
+      <text x="${canvasWidth / 2}" y="43" text-anchor="middle" class="name">${escapeXml(name)}</text>
       ${
         organization
-          ? `<text x="${canvasWidth / 2}" y="78"
-              text-anchor="middle"
-              font-size="18"
-              fill="#5b6770">${escapeXml(organization)}</text>`
+          ? `<text x="${canvasWidth / 2}" y="82" text-anchor="middle" class="organization">${escapeXml(organization)}</text>`
           : ""
       }
     </svg>
@@ -109,15 +125,10 @@ export async function qrPngFor(booking) {
 }
 
 export async function qrDataUrlForBooking(booking) {
-  if (!booking) throw new Error("Participant booking is required");
-
-  // Use the exact same renderer as the Admin QR Center so a newly registered
-  // participant sees the same clean, human-readable QR image on Thank You.
   const png = await qrPngFor(booking);
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-// Kept for compatibility with any existing callers that only need the raw QR.
 export async function qrDataUrlForToken(token) {
   if (!token) throw new Error("Participant QR token is required");
 

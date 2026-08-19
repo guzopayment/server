@@ -11,26 +11,6 @@ import {
 
 const router = express.Router();
 
-// HTTP headers only allow ISO-8859-1 characters. Participant/organization
-// names may contain Amharic (or other Unicode), so never put the raw name
-// directly inside Content-Disposition. Use an ASCII fallback plus the
-// RFC 5987 filename* parameter for the exact Unicode filename.
-function contentDispositionInline(fileName) {
-  const safe = safeFileName(fileName) || "participant";
-  const encoded = encodeURIComponent(safe).replace(/['()*]/g, (char) =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-  return `inline; filename="participant-qr.png"; filename*=UTF-8''${encoded}.png`;
-}
-
-function contentDispositionAttachment(fileName, fallback = "download.zip") {
-  const safe = safeFileName(fileName) || fallback.replace(/\.zip$/i, "");
-  const encoded = encodeURIComponent(safe).replace(/['()*]/g, (char) =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}.zip`;
-}
-
 function publicQrStats(rows) {
   const total = rows.length;
   const generated = rows.filter((r) => r.qrToken).length;
@@ -186,7 +166,7 @@ router.get("/download-organization", adminAuth, async (req, res) => {
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      contentDispositionAttachment(organization, "organization-qr-codes.zip"),
+      `attachment; filename="${safeFileName(organization)}-qr-codes.zip"`,
     );
 
     const archive = archiver("zip", { zlib: { level: 6 } });
@@ -229,7 +209,7 @@ router.get("/:id", adminAuth, async (req, res) => {
     res.setHeader("Content-Type", "image/png");
     res.setHeader(
       "Content-Disposition",
-      contentDispositionInline(booking.name),
+      `inline; filename="${safeFileName(booking.name)}.png"`,
     );
     res.send(png);
   } catch (err) {
