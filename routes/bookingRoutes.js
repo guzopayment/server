@@ -1784,17 +1784,50 @@ router.post("/attendance/scan", adminAuth, async (req, res) => {
   try {
     const raw = normalizeText(req.body?.qrData);
     const match = raw.match(/^GUBAE-EVENT:([a-f0-9]{24})$/i);
-    if (!match) return res.status(400).json({ message: "Invalid participant QR code." });
+    if (!match)
+      return res.status(400).json({ message: "Invalid participant QR code." });
     const participant = await Booking.findById(match[1]);
-    if (!participant) return res.status(404).json({ message: "Participant is not registered in this system." });
+    if (!participant)
+      return res
+        .status(404)
+        .json({ message: "Participant is not registered in this system." });
     if (participant.attendance?.checkedIn) {
-      return res.json({ success: true, alreadyCheckedIn: true, message: "Participant is already marked present.", participant: { id: String(participant._id), name: participant.name, organization: participant.organization, sex: participant.sex, checkedInAt: participant.attendance.checkedInAt } });
+      return res.json({
+        success: true,
+        alreadyCheckedIn: true,
+        message: "Participant is already marked present.",
+        participant: {
+          id: String(participant._id),
+          name: participant.name,
+          organization: participant.organization,
+          sex: participant.sex,
+          checkedInAt: participant.attendance.checkedInAt,
+        },
+      });
     }
     participant.attendance = { checkedIn: true, checkedInAt: new Date() };
     await participant.save();
     const io = getIO?.();
-    if (io) io.emit("participantCheckedIn", { participantId: String(participant._id), name: participant.name, organization: participant.organization, sex: participant.sex, checkedInAt: participant.attendance.checkedInAt });
-    return res.json({ success: true, alreadyCheckedIn: false, message: "Participant marked present.", participant: { id: String(participant._id), name: participant.name, organization: participant.organization, sex: participant.sex, checkedInAt: participant.attendance.checkedInAt } });
+    if (io)
+      io.emit("participantCheckedIn", {
+        participantId: String(participant._id),
+        name: participant.name,
+        organization: participant.organization,
+        sex: participant.sex,
+        checkedInAt: participant.attendance.checkedInAt,
+      });
+    return res.json({
+      success: true,
+      alreadyCheckedIn: false,
+      message: "Participant marked present.",
+      participant: {
+        id: String(participant._id),
+        name: participant.name,
+        organization: participant.organization,
+        sex: participant.sex,
+        checkedInAt: participant.attendance.checkedInAt,
+      },
+    });
   } catch (error) {
     console.error("POST /bookings/attendance/scan error:", error);
     return res.status(500).json({ message: "Failed to record attendance." });
@@ -1822,7 +1855,8 @@ router.get("/attendance/list", adminAuth, async (_req, res) => {
 
     const byOrganizationMap = new Map();
     for (const row of participants) {
-      const organization = String(row.organization || "Unknown").trim() || "Unknown";
+      const organization =
+        String(row.organization || "Unknown").trim() || "Unknown";
       if (!byOrganizationMap.has(organization)) {
         byOrganizationMap.set(organization, {
           organization,
@@ -1838,7 +1872,9 @@ router.get("/attendance/list", adminAuth, async (_req, res) => {
       if (row.status === "Present") item.totalPresent += 1;
       else item.totalAbsent += 1;
 
-      const sex = String(row.sex || "").trim().toLowerCase();
+      const sex = String(row.sex || "")
+        .trim()
+        .toLowerCase();
       if (sex === "male" || sex === "ወንድ") item.men += 1;
       if (sex === "female" || sex === "ሴት") item.women += 1;
     }
@@ -1878,7 +1914,9 @@ router.post("/attendance/reset", adminAuth, async (req, res) => {
       });
     }
 
-    const actualPresent = await Booking.countDocuments({ "attendance.checkedIn": true });
+    const actualPresent = await Booking.countDocuments({
+      "attendance.checkedIn": true,
+    });
     if (actualPresent !== expectedPresent) {
       return res.status(409).json({
         message: `Attendance changed while you were confirming. Current Present count is ${actualPresent}. Refresh and try again.`,
@@ -1887,7 +1925,10 @@ router.post("/attendance/reset", adminAuth, async (req, res) => {
     }
 
     if (actualPresent === 0) {
-      return res.json({ message: "No attendance records were marked present.", resetCount: 0 });
+      return res.json({
+        message: "No attendance records were marked present.",
+        resetCount: 0,
+      });
     }
 
     const result = await Booking.updateMany(
@@ -1916,24 +1957,45 @@ router.get("/attendance/summary", adminAuth, async (_req, res) => {
       Booking.countDocuments({ "attendance.checkedIn": true }),
       Booking.aggregate([
         { $match: { "attendance.checkedIn": true } },
-        { $group: { _id: { organization: "$organization", sex: "$sex" }, count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { organization: "$organization", sex: "$sex" },
+            count: { $sum: 1 },
+          },
+        },
         { $sort: { "_id.organization": 1, count: -1 } },
       ]),
     ]);
     const byOrganization = {};
-    let men = 0, women = 0;
+    let men = 0,
+      women = 0;
     for (const row of rows) {
       const org = row._id.organization || "Unknown";
       const sex = String(row._id.sex || "Unknown").trim();
-      if (!byOrganization[org]) byOrganization[org] = { organization: org, total: 0, men: 0, women: 0 };
+      if (!byOrganization[org])
+        byOrganization[org] = { organization: org, total: 0, men: 0, women: 0 };
       byOrganization[org].total += row.count;
-      if (sex === "ወንድ" || sex.toLowerCase() === "male") { byOrganization[org].men += row.count; men += row.count; }
-      else if (sex === "ሴት" || sex.toLowerCase() === "female") { byOrganization[org].women += row.count; women += row.count; }
+      if (sex === "ወንድ" || sex.toLowerCase() === "male") {
+        byOrganization[org].men += row.count;
+        men += row.count;
+      } else if (sex === "ሴት" || sex.toLowerCase() === "female") {
+        byOrganization[org].women += row.count;
+        women += row.count;
+      }
     }
-    return res.json({ totalRegistered, totalPresent, totalAbsent: Math.max(totalRegistered-totalPresent,0), men, women, byOrganization: Object.values(byOrganization) });
+    return res.json({
+      totalRegistered,
+      totalPresent,
+      totalAbsent: Math.max(totalRegistered - totalPresent, 0),
+      men,
+      women,
+      byOrganization: Object.values(byOrganization),
+    });
   } catch (error) {
     console.error("GET /bookings/attendance/summary error:", error);
-    return res.status(500).json({ message: "Failed to load attendance summary." });
+    return res
+      .status(500)
+      .json({ message: "Failed to load attendance summary." });
   }
 });
 
