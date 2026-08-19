@@ -207,10 +207,13 @@ router.get("/:id", adminAuth, async (req, res) => {
     await ensureQrToken(booking);
     const png = await qrPngFor(booking);
     res.setHeader("Content-Type", "image/png");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${safeFileName(booking.name)}.png"`,
-    );
+
+    return res.send(pngBuffer);
+    // res.setHeader("Content-Type", "image/png");
+    // res.setHeader(
+    //   "Content-Disposition",
+    //   `inline; filename="${safeFileName(booking.name)}.png"`,
+    // );
     res.send(png);
   } catch (err) {
     console.error("GET /api/qr/:id ERROR:", {
@@ -221,9 +224,7 @@ router.get("/:id", adminAuth, async (req, res) => {
 
     if (!res.headersSent) {
       return res.status(500).json({
-        message:
-          err.message ||
-          "Failed to generate QR | QR ኮድ መፍጠር አልተቻለም",
+        message: err.message || "Failed to generate QR | QR ኮድ መፍጠር አልተቻለም",
       });
     }
 
