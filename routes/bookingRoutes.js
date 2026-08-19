@@ -1,4 +1,4 @@
-import { makeQrToken, qrDataUrlForToken } from "../utils/qrService.js";
+import { makeQrToken, qrDataUrlForBooking } from "../utils/qrService.js";
 // // // // import express from "express";
 // // // // import multer from "multer";
 // // // // import fs from "fs/promises";
@@ -1498,7 +1498,7 @@ router.post("/", async (req, res) => {
     // participant receives their personal QR on the Thank You page.
     // This uses the exact same token that the scanner validates.
     const qrData = makeQrToken(booking._id);
-    const qrDataUrl = await qrDataUrlForToken(qrData);
+    const qrDataUrl = await qrDataUrlForBooking(booking);
 
     return res.status(201).json({
       message: "Booking submitted successfully",

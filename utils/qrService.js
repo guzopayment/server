@@ -1,5 +1,18 @@
 import QRCode from "qrcode";
 import sharp from "sharp";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Bundle an Ethiopic-capable font so Sharp/libvips renders Amharic names
+// correctly on local machines and on Render/Linux servers. Do not rely on
+// whatever fonts happen to be installed on the hosting server.
+const ETHIOPIC_FONT_DATA = fs
+  .readFileSync(path.join(__dirname, "NotoSansEthiopic-Regular.ttf"))
+  .toString("base64");
 
 export function makeQrToken(id) {
   return `GUBAE-EVENT:${String(id)}`;
@@ -55,10 +68,16 @@ export async function qrPngFor(booking) {
   const labelSvg = `
     <svg width="${canvasWidth}" height="${qrTop}" viewBox="0 0 ${canvasWidth} ${qrTop}"
          xmlns="http://www.w3.org/2000/svg">
+      <style>
+        @font-face {
+          font-family: "GubaeEthiopic";
+          src: url(data:font/ttf;base64,${ETHIOPIC_FONT_DATA}) format("truetype");
+        }
+        text { font-family: "GubaeEthiopic", sans-serif; }
+      </style>
       <rect width="${canvasWidth}" height="${qrTop}" fill="#ffffff"/>
       <text x="${canvasWidth / 2}" y="42"
             text-anchor="middle"
-            font-family="Arial, 'Noto Sans Ethiopic', sans-serif"
             font-size="28"
             font-weight="700"
             fill="#003B46">${escapeXml(name)}</text>
@@ -66,7 +85,6 @@ export async function qrPngFor(booking) {
         organization
           ? `<text x="${canvasWidth / 2}" y="78"
               text-anchor="middle"
-              font-family="Arial, 'Noto Sans Ethiopic', sans-serif"
               font-size="18"
               fill="#5b6770">${escapeXml(organization)}</text>`
           : ""
@@ -90,6 +108,16 @@ export async function qrPngFor(booking) {
     .toBuffer();
 }
 
+export async function qrDataUrlForBooking(booking) {
+  if (!booking) throw new Error("Participant booking is required");
+
+  // Use the exact same renderer as the Admin QR Center so a newly registered
+  // participant sees the same clean, human-readable QR image on Thank You.
+  const png = await qrPngFor(booking);
+  return `data:image/png;base64,${png.toString("base64")}`;
+}
+
+// Kept for compatibility with any existing callers that only need the raw QR.
 export async function qrDataUrlForToken(token) {
   if (!token) throw new Error("Participant QR token is required");
 
