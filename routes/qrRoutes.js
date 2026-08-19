@@ -7,6 +7,7 @@ import {
   makeQrToken,
   qrPngFor,
   safeFileName,
+  safeHeaderFileName,
 } from "../utils/qrService.js";
 
 const router = express.Router();
@@ -18,20 +19,27 @@ function publicQrStats(rows) {
 }
 
 async function ensureAllTokens(bookings) {
-  const operations = [];
-  for (const booking of bookings) {
-    const expected = makeQrToken(booking._id);
-    if (booking.qrToken !== expected) {
-      operations.push({
-        updateOne: {
-          filter: { _id: booking._id },
-          update: { $set: { qrToken: expected } },
+  // Only create tokens for participants that do not have one yet.
+  // Existing tokens are never replaced, preserving already-issued QR codes.
+  const operations = bookings
+    .filter((booking) => !booking.qrToken)
+    .map((booking) => ({
+      updateOne: {
+        filter: {
+          _id: booking._id,
+          $or: [
+            { qrToken: { $exists: false } },
+            { qrToken: null },
+            { qrToken: "" },
+          ],
         },
-      });
-    }
-  }
-  if (operations.length)
+        update: { $set: { qrToken: makeQrToken(booking._id) } },
+      },
+    }));
+
+  if (operations.length) {
     await Booking.bulkWrite(operations, { ordered: false });
+  }
 }
 
 router.get("/status", adminAuth, async (_req, res) => {
@@ -166,7 +174,7 @@ router.get("/download-organization", adminAuth, async (req, res) => {
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${safeFileName(organization)}-qr-codes.zip"`,
+      `attachment; filename="${safeHeaderFileName(organization)}-qr-codes.zip"`,
     );
 
     const archive = archiver("zip", { zlib: { level: 6 } });
