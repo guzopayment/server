@@ -1,4 +1,4 @@
-import { makeQrToken, qrDataUrlForBooking } from "../utils/qrService.js";
+import { ensureQrToken, makeQrToken, qrDataUrlForBooking } from "../utils/qrService.js";
 // // // // import express from "express";
 // // // // import multer from "multer";
 // // // // import fs from "fs/promises";
@@ -1466,9 +1466,25 @@ router.post("/", async (req, res) => {
     });
 
     if (existing) {
+      // Recover the ORIGINAL QR for the participant instead of creating a new
+      // registration or changing the existing scanner token.
+      await ensureQrToken(existing);
+      const qrDataUrl = await qrDataUrlForBooking(existing);
+
       return res.status(409).json({
         message:
           "⚠️ ይህ ስም ቀደም ብሎ ተመዝግቧል | This participant has already been registered.",
+        alreadyRegistered: true,
+        booking: {
+          _id: existing._id,
+          name: existing.name,
+          organization: existing.organization,
+          phone: existing.phone,
+          sex: existing.sex,
+          createdAt: existing.createdAt,
+          updatedAt: existing.updatedAt,
+        },
+        qrDataUrl,
       });
     }
 
