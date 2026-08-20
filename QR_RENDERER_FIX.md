@@ -7,3 +7,7 @@ The important path is:
 `utils/NotoSansEthiopic-Regular.ttf`
 
 The QR token is not changed. The visual image is changed only by adding the participant name and organization.
+
+### Centered Amharic text
+
+The renderer now renders each Amharic line separately, trims transparent margins, and calculates the horizontal offset from the actual glyph width. This keeps the participant name and each organization line centered on both local and Render/Linux output.

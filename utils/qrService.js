@@ -143,27 +143,35 @@ export function safeHeaderFileName(value, fallback = "gubae-qr-codes") {
   return ascii || fallback;
 }
 
-async function renderTextPng(text, { width, height, fontSize, color }) {
+async function renderTextLine(text, { width, fontSize, color }) {
   if (!text) return null;
 
-  // IMPORTANT: Sharp/libvips does NOT support embedded SVG fonts reliably.
-  // Using Sharp's fontfile option loads the bundled TTF directly through
-  // Pango/fontconfig and therefore works on Render/Linux as well as locally.
-  return sharp({
+  // Render each line separately, trim its transparent margins, then center the
+  // actual glyphs on the final canvas. This avoids the left-alignment behavior
+  // that can occur with Pango text blocks on Linux/Render.
+  const raw = await sharp({
     text: {
       text: `<span size="${Math.round(fontSize * 1000)}" foreground="${color}">${escapePango(text)}</span>`,
       font: "Noto Sans Ethiopic",
       fontfile: fontPath(),
       width,
-      height,
+      height: Math.ceil(fontSize * 1.55),
       align: "center",
       rgba: true,
-      wrap: "word",
-      spacing: 2,
+      wrap: "none",
+      spacing: 0,
     },
   })
     .png()
     .toBuffer();
+
+  const trimmed = sharp(raw).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } });
+  const meta = await trimmed.metadata();
+  return {
+    input: await trimmed.png().toBuffer(),
+    width: meta.width || width,
+    height: meta.height || Math.ceil(fontSize * 1.55),
+  };
 }
 
 /**
@@ -221,36 +229,42 @@ export async function qrPngFor(booking) {
   const canvasHeight = labelHeight + 700 + 30;
   const qrTop = labelHeight;
 
-  const namePng = await renderTextPng(nameLines.join("\n"), {
-    width: maxTextWidth,
-    height: nameHeight,
-    fontSize: nameFontSize,
-    color: "#111827",
-  });
+  const composite = [];
+  let currentTop = topPadding;
 
-  const organizationPng = organizationLines.length
-    ? await renderTextPng(organizationLines.join("\n"), {
+  for (const line of nameLines) {
+    const rendered = await renderTextLine(line, {
+      width: maxTextWidth,
+      fontSize: nameFontSize,
+      color: "#111827",
+    });
+    if (rendered) {
+      composite.push({
+        input: rendered.input,
+        left: Math.round((canvasWidth - rendered.width) / 2),
+        top: currentTop,
+      });
+      currentTop += nameLineHeight;
+    }
+  }
+
+  if (organizationLines.length) {
+    currentTop += between;
+    for (const line of organizationLines) {
+      const rendered = await renderTextLine(line, {
         width: maxTextWidth,
-        height: organizationHeight,
         fontSize: orgFontSize,
         color: "#374151",
-      })
-    : null;
-
-  const composite = [
-    {
-      input: namePng,
-      left: sideMargin,
-      top: topPadding,
-    },
-  ];
-
-  if (organizationPng) {
-    composite.push({
-      input: organizationPng,
-      left: sideMargin,
-      top: topPadding + nameHeight + between,
-    });
+      });
+      if (rendered) {
+        composite.push({
+          input: rendered.input,
+          left: Math.round((canvasWidth - rendered.width) / 2),
+          top: currentTop,
+        });
+        currentTop += orgLineHeight;
+      }
+    }
   }
 
   composite.push({

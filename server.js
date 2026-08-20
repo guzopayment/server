@@ -20,6 +20,7 @@ import adminCleanupRoutes from "./routes/adminCleanup.js";
 import { initSocket } from "./utils/socket.js";
 import participantRoutes from "./routes/participantRoutes.js";
 import qrRoutes from "./routes/qrRoutes.js";
+import attendanceLiveRoutes from "./routes/attendanceLiveRoutes.js";
 
 console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
 console.log("MONGO_URI preview:", process.env.MONGO_URI?.slice(0, 25));
@@ -45,6 +46,7 @@ const allowedOrigins = [
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
   ...(process.env.SCANNER_ORIGIN ? [process.env.SCANNER_ORIGIN] : []),
+  ...(process.env.LIVE_ATTENDANCE_ORIGIN ? [process.env.LIVE_ATTENDANCE_ORIGIN] : []),
 ];
 
 const corsOptions = {
@@ -108,6 +110,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/qr", qrRoutes);
+app.use("/api/attendance", attendanceLiveRoutes);
 app.use("/api/debug", adminDebugRoutes);
 app.use("/api/admin", adminCleanupRoutes);
 
