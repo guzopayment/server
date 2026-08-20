@@ -45,8 +45,11 @@ const allowedOrigins = [
   "https://guzoticketbookingproofsubmitting.vercel.app",
   "https://guzoticketbookingimagesubmitting.vercel.app",
   "https://gubae-beteseb.vercel.app",
+  "https://gubae-beteseb-live-attendance.vercel.app/",
   ...(process.env.SCANNER_ORIGIN ? [process.env.SCANNER_ORIGIN] : []),
-  ...(process.env.LIVE_ATTENDANCE_ORIGIN ? [process.env.LIVE_ATTENDANCE_ORIGIN] : []),
+  ...(process.env.LIVE_ATTENDANCE_ORIGIN
+    ? [process.env.LIVE_ATTENDANCE_ORIGIN]
+    : []),
 ];
 
 const corsOptions = {
