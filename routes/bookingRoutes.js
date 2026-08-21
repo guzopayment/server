@@ -1430,6 +1430,10 @@ function escapeRegex(value) {
 
 const PHONE_REGEX = /^09\d{8}$/;
 
+// Close new participant registration while preserving QR recovery for existing participants.
+// Set REGISTRATION_CLOSED=false only when new registration is intentionally reopened.
+const REGISTRATION_CLOSED = String(process.env.REGISTRATION_CLOSED || "true").toLowerCase() !== "false";
+
 /**
  * PUBLIC: create a participant booking.
  * Matches the simplified form: name, organization, phone, sex.
@@ -1485,6 +1489,16 @@ router.post("/", async (req, res) => {
           updatedAt: existing.updatedAt,
         },
         qrDataUrl,
+      });
+    }
+
+    // New registrations are closed, but existing participants were checked first
+    // so their original QR can still be recovered.
+    if (REGISTRATION_CLOSED) {
+      return res.status(403).json({
+        registrationClosed: true,
+        message:
+          "📢 ምዝገባው ተዘግቷል | Participation has ended. New participant registration is no longer available.",
       });
     }
 
