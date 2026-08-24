@@ -24,9 +24,17 @@ function qrPayloadFor(booking) {
   return String(booking?.qrToken || makeQrToken(booking?._id));
 }
 
-function fontPath() {
+function fontPathForText(text = "") {
+  // Noto Sans Ethiopic intentionally contains Ethiopic glyphs but does not
+  // contain the normal Latin alphabet. Using it for an English-only name
+  // causes Pango/fontconfig to render fallback glyphs incorrectly on some
+  // Linux hosts. Choose the font according to the actual script in the text.
+  const hasEthiopic = /[\u1200-\u137F]/.test(String(text));
   return fileURLToPath(
-    new URL("./NotoSansEthiopic-Regular.ttf", import.meta.url),
+    new URL(
+      hasEthiopic ? "./NotoSansEthiopic-Regular.ttf" : "./NotoSans-Regular.ttf",
+      import.meta.url,
+    ),
   );
 }
 
@@ -152,8 +160,8 @@ async function renderTextLine(text, { width, fontSize, color }) {
   const raw = await sharp({
     text: {
       text: `<span size="${Math.round(fontSize * 1000)}" foreground="${color}">${escapePango(text)}</span>`,
-      font: "Noto Sans Ethiopic",
-      fontfile: fontPath(),
+      font: /[\u1200-\u137F]/.test(String(text)) ? "Noto Sans Ethiopic" : "Noto Sans",
+      fontfile: fontPathForText(text),
       width,
       height: Math.ceil(fontSize * 1.55),
       align: "center",

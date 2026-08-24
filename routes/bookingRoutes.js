@@ -1435,73 +1435,6 @@ const PHONE_REGEX = /^09\d{8}$/;
 const REGISTRATION_CLOSED = String(process.env.REGISTRATION_CLOSED || "true").toLowerCase() !== "false";
 
 /**
- * PUBLIC: recover existing participant QR codes by phone + organization.
- * Registration is closed, so this endpoint only looks up existing records.
- * It intentionally returns every matching booking because the same phone and
- * organization may be registered under different names.
- */
-router.post("/recover-by-phone-org", async (req, res) => {
-  try {
-    const cleanOrganization = normalizeText(req.body?.organization);
-    const cleanPhone = normalizeText(req.body?.phone);
-
-    if (!cleanOrganization || !cleanPhone) {
-      return res.status(400).json({
-        message:
-          "ስልክ ቁጥር እና ድርጅት ያስፈልጋሉ | Phone number and organization are required.",
-      });
-    }
-
-    if (!PHONE_REGEX.test(cleanPhone)) {
-      return res.status(400).json({
-        message:
-          "ትክክለኛ ስልክ ቁጥር ያስፈልጋል | A valid phone number is required (09XXXXXXXX).",
-      });
-    }
-
-    const matches = await Booking.find({
-      phone: cleanPhone,
-      organization: cleanOrganization,
-    }).sort({ createdAt: 1 });
-
-    if (!matches.length) {
-      return res.status(404).json({
-        notRegistered: true,
-        message:
-          "You are not registered, please contact the support team",
-      });
-    }
-
-    const results = [];
-    for (const booking of matches) {
-      await ensureQrToken(booking);
-      const qrDataUrl = await qrDataUrlForBooking(booking);
-      results.push({
-        _id: booking._id,
-        name: booking.name,
-        organization: booking.organization,
-        phone: booking.phone,
-        sex: booking.sex,
-        createdAt: booking.createdAt,
-        qrDataUrl,
-      });
-    }
-
-    return res.json({
-      found: true,
-      count: results.length,
-      multiple: results.length > 1,
-      matches: results,
-    });
-  } catch (error) {
-    console.error("POST /bookings/recover-by-phone-org error:", error);
-    return res.status(500).json({
-      message: "Unable to retrieve the registration QR code(s).",
-    });
-  }
-});
-
-/**
  * PUBLIC: create a participant booking.
  * Matches the simplified form: name, organization, phone, sex.
  * Rejects duplicate submissions (same name + organization + phone).
@@ -1605,54 +1538,91 @@ router.post("/", async (req, res) => {
   }
 });
 
+
 /**
- * ADMIN: register a special guest and mark PRESENT immediately.
- * Public registration remains closed; this route is for authorized staff only.
+ * PUBLIC: recover existing participant QR by phone + organization.
+ *
+ * This endpoint is intentionally separate from POST /:
+ * - It never creates a participant.
+ * - It does not require the admin token.
+ * - It returns every existing participant that matches the phone +
+ *   organization pair, so duplicate names can each receive their own
+ *   original QR code.
  */
-router.post("/special-guests", adminAuth, async (req, res) => {
+router.post("/recover-by-phone-org", async (req, res) => {
   try {
-    const cleanName = normalizeText(req.body?.name);
+    const cleanPhone = normalizeText(req.body?.phone)
+      .replace(/\D/g, "")
+      .slice(0, 10);
     const cleanOrganization = normalizeText(req.body?.organization);
-    const cleanPhone = normalizeText(req.body?.phone);
-    const cleanSex = normalizeText(req.body?.sex);
 
-    if (!cleanName || !cleanOrganization || !cleanPhone || !cleanSex)
-      return res.status(400).json({ message: "Name, organization, phone and sex are required." });
-    if (!PHONE_REGEX.test(cleanPhone))
-      return res.status(400).json({ message: "A valid phone number is required (09XXXXXXXX)." });
-
-    const duplicate = await Booking.findOne({
-      name: new RegExp(`^${escapeRegex(cleanName)}$`, "i"),
-      phone: cleanPhone,
-    });
-    if (duplicate) {
-      return res.status(409).json({
-        message: "This participant is already registered in the system.",
-        booking: { _id: duplicate._id, name: duplicate.name, organization: duplicate.organization, phone: duplicate.phone, sex: duplicate.sex, checkedIn: Boolean(duplicate.attendance?.checkedIn), checkedInAt: duplicate.attendance?.checkedInAt || null },
+    if (!PHONE_REGEX.test(cleanPhone) || !cleanOrganization) {
+      return res.status(400).json({
+        message: "Valid phone number and organization are required.",
       });
     }
 
-    const now = new Date();
-    const booking = await Booking.create({
-      name: cleanName, organization: cleanOrganization, phone: cleanPhone, sex: cleanSex,
-      action: "Admin Registered Special Guest",
-      attendance: { checkedIn: true, checkedInAt: now },
-    });
-    if (!booking.qrToken) { booking.qrToken = makeQrToken(booking._id); await booking.save(); }
+    // Organization is matched case-insensitively but otherwise exactly.
+    // Phone is normalized to digits above.
+    const matches = await Booking.find({
+      phone: cleanPhone,
+      organization: new RegExp(
+        `^${escapeRegex(cleanOrganization)}$`,
+        "i",
+      ),
+    })
+      .select("_id name organization phone sex qrToken attendance createdAt updatedAt")
+      .sort({ createdAt: 1 })
+      .lean();
 
-    const io = getIO?.();
-    if (io) {
-      io.emit("newBooking", booking);
-      io.emit("booking:created", { bookingId: String(booking._id), name: booking.name, organization: booking.organization, specialGuest: true });
-      io.emit("participantCheckedIn", { participantId: String(booking._id), name: booking.name, organization: booking.organization, sex: booking.sex, checkedInAt: booking.attendance.checkedInAt, specialGuest: true });
+    if (!matches.length) {
+      return res.status(404).json({
+        notRegistered: true,
+        message: "You are not registered, please contact the support team",
+      });
     }
-    return res.status(201).json({
-      message: "Special guest registered and marked present.",
-      booking: { _id: booking._id, name: booking.name, organization: booking.organization, phone: booking.phone, sex: booking.sex, attendance: booking.attendance, action: booking.action },
+
+    const recovered = [];
+
+    for (const row of matches) {
+      // Re-hydrate the document so the existing QR token can be preserved.
+      const booking = await Booking.findById(row._id);
+      if (!booking) continue;
+
+      await ensureQrToken(booking);
+      const qrDataUrl = await qrDataUrlForBooking(booking);
+
+      recovered.push({
+        _id: String(booking._id),
+        name: booking.name || "",
+        organization: booking.organization || "",
+        phone: booking.phone || "",
+        sex: booking.sex || "",
+        qrDataUrl,
+      });
+    }
+
+    if (!recovered.length) {
+      return res.status(404).json({
+        notRegistered: true,
+        message: "You are not registered, please contact the support team",
+      });
+    }
+
+    return res.json({
+      found: true,
+      count: recovered.length,
+      multiple: recovered.length > 1,
+      matches: recovered,
     });
   } catch (error) {
-    console.error("POST /bookings/special-guests error:", error);
-    return res.status(500).json({ message: "Failed to register special guest." });
+    console.error("POST /bookings/recover-by-phone-org error:", error);
+    return res.status(500).json({
+      message: "Failed to recover the registered QR code.",
+      ...(process.env.NODE_ENV !== "production"
+        ? { details: error?.message || String(error) }
+        : {}),
+    });
   }
 });
 
@@ -1928,6 +1898,94 @@ router.delete("/:id", adminAuth, async (req, res) => {
 });
 
 /** STAFF: mark a registered participant present from a QR code. */
+// -----------------------------------------------------------------------------
+// SPECIAL GUESTS
+// -----------------------------------------------------------------------------
+// Admin-only list used by the separate special-guest registration client.
+router.get("/special-guests", adminAuth, async (_req, res) => {
+  try {
+    const rows = await Booking.find({ specialGuest: true })
+      .select("_id name organization phone sex attendance specialGuest createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json({
+      total: rows.length,
+      specialGuests: rows.map((row) => ({
+        id: String(row._id),
+        name: row.name || "",
+        organization: row.organization || "",
+        phone: row.phone || "",
+        sex: row.sex || "",
+        specialGuest: true,
+        status: row.attendance?.checkedIn ? "Present" : "Absent",
+        checkedInAt: row.attendance?.checkedInAt || null,
+        createdAt: row.createdAt || null,
+      })),
+    });
+  } catch (error) {
+    console.error("GET /bookings/special-guests error:", error);
+    return res.status(500).json({ message: "Failed to load special guests." });
+  }
+});
+
+// Admin-created special guest: immediately counted as present.
+router.post("/special-guests", adminAuth, async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").replace(/\s+/g, " ").trim();
+    const organization = String(req.body?.organization || "").replace(/\s+/g, " ").trim();
+    const phone = String(req.body?.phone || "").replace(/\s+/g, " ").trim();
+    const sex = String(req.body?.sex || "").replace(/\s+/g, " ").trim();
+
+    if (!name || !organization || !phone) {
+      return res.status(400).json({
+        message: "Name, organization and phone are required.",
+      });
+    }
+
+    // Booking.qrToken has a unique sparse index. Older documents may have
+    // qrToken=null, so do NOT create another special guest with null here.
+    // Special guests do not need to scan a QR, but they still need a unique
+    // token value so MongoDB cannot reject the second guest as a duplicate.
+    const specialGuestToken = `SPECIAL-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+
+    const booking = await Booking.create({
+      name,
+      organization,
+      phone,
+      sex,
+      qrToken: specialGuestToken,
+      specialGuest: true,
+      action: "Special Guest",
+      attendance: { checkedIn: true, checkedInAt: new Date() },
+    });
+
+    return res.status(201).json({
+      message: "Special guest registered and marked present.",
+      booking,
+    });
+  } catch (error) {
+    console.error("POST /bookings/special-guests error:", error);
+
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        message: "This special guest conflicts with an existing unique record.",
+        code: "DUPLICATE_KEY",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to register special guest.",
+      // Keep the useful database reason during local development.
+      ...(process.env.NODE_ENV !== "production"
+        ? { details: error?.message || String(error) }
+        : {}),
+    });
+  }
+});
+
 router.post("/attendance/scan", adminAuth, async (req, res) => {
   try {
     const raw = normalizeText(req.body?.qrData);

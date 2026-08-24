@@ -43,6 +43,10 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: "Submitted",
     },
+
+    // Admin-created guests are registered and marked present immediately,
+    // so they count in the live attendance without scanning a QR code.
+    specialGuest: { type: Boolean, default: false },
     statusUpdatedAt: { type: Date, default: null },
 
     // Event attendance
