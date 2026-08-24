@@ -44,22 +44,29 @@ router.get("/live", async (_req, res) => {
       ]);
 
     const totalAbsent = Math.max(totalRegistered - totalPresent, 0);
-    const presentPercent = totalRegistered
-      ? Number(((totalPresent / totalRegistered) * 100).toFixed(1))
-      : 0;
-    const absentPercent = totalRegistered
-      ? Number(((totalAbsent / totalRegistered) * 100).toFixed(1))
-      : 0;
+    const presentPercent = totalRegistered ? Number(((totalPresent / totalRegistered) * 100).toFixed(1)) : 0;
+    const absentPercent = totalRegistered ? Number(((totalAbsent / totalRegistered) * 100).toFixed(1)) : 0;
+
+    const [organizationStats, sexStats] = await Promise.all([
+      Booking.aggregate([
+        { $group: { _id: { $ifNull: ["$organization", ""] }, total: { $sum: 1 }, present: { $sum: { $cond: [{ $eq: ["$attendance.checkedIn", true] }, 1, 0] } } } },
+        { $sort: { present: -1, total: -1, _id: 1 } }, { $limit: 20 },
+      ]),
+      Booking.aggregate([
+        { $group: { _id: { $ifNull: ["$sex", ""] }, total: { $sum: 1 }, present: { $sum: { $cond: [{ $eq: ["$attendance.checkedIn", true] }, 1, 0] } } } },
+        { $sort: { present: -1, total: -1, _id: 1 } },
+      ]),
+    ]);
+    const breakdown = (row, fallback) => {
+      const total = Number(row.total || 0), present = Number(row.present || 0);
+      return { label: String(row._id || fallback), total, present, absent: Math.max(total-present,0), presentPercent: total ? Number(((present/total)*100).toFixed(1)) : 0 };
+    };
 
     return res.json({
-      generatedAt: new Date(),
-      totalRegistered,
-      totalPresent,
-      totalAbsent,
-      presentPercent,
-      absentPercent,
-      present: presentRows.map(participantView),
-      absent: absentRows.map(participantView),
+      generatedAt: new Date(), totalRegistered, totalPresent, totalAbsent, presentPercent, absentPercent,
+      present: presentRows.map(participantView), absent: absentRows.map(participantView),
+      organizationStats: organizationStats.map(r => breakdown(r, "ሌላ ድርጅት / Other")),
+      sexStats: sexStats.map(r => breakdown(r, "ያልተገለጸ / Unspecified")),
     });
   } catch (error) {
     console.error("GET /api/attendance/live error:", error);

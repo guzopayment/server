@@ -1435,6 +1435,73 @@ const PHONE_REGEX = /^09\d{8}$/;
 const REGISTRATION_CLOSED = String(process.env.REGISTRATION_CLOSED || "true").toLowerCase() !== "false";
 
 /**
+ * PUBLIC: recover existing participant QR codes by phone + organization.
+ * Registration is closed, so this endpoint only looks up existing records.
+ * It intentionally returns every matching booking because the same phone and
+ * organization may be registered under different names.
+ */
+router.post("/recover-by-phone-org", async (req, res) => {
+  try {
+    const cleanOrganization = normalizeText(req.body?.organization);
+    const cleanPhone = normalizeText(req.body?.phone);
+
+    if (!cleanOrganization || !cleanPhone) {
+      return res.status(400).json({
+        message:
+          "ስልክ ቁጥር እና ድርጅት ያስፈልጋሉ | Phone number and organization are required.",
+      });
+    }
+
+    if (!PHONE_REGEX.test(cleanPhone)) {
+      return res.status(400).json({
+        message:
+          "ትክክለኛ ስልክ ቁጥር ያስፈልጋል | A valid phone number is required (09XXXXXXXX).",
+      });
+    }
+
+    const matches = await Booking.find({
+      phone: cleanPhone,
+      organization: cleanOrganization,
+    }).sort({ createdAt: 1 });
+
+    if (!matches.length) {
+      return res.status(404).json({
+        notRegistered: true,
+        message:
+          "You are not registered, please contact the support team",
+      });
+    }
+
+    const results = [];
+    for (const booking of matches) {
+      await ensureQrToken(booking);
+      const qrDataUrl = await qrDataUrlForBooking(booking);
+      results.push({
+        _id: booking._id,
+        name: booking.name,
+        organization: booking.organization,
+        phone: booking.phone,
+        sex: booking.sex,
+        createdAt: booking.createdAt,
+        qrDataUrl,
+      });
+    }
+
+    return res.json({
+      found: true,
+      count: results.length,
+      multiple: results.length > 1,
+      matches: results,
+    });
+  } catch (error) {
+    console.error("POST /bookings/recover-by-phone-org error:", error);
+    return res.status(500).json({
+      message: "Unable to retrieve the registration QR code(s).",
+    });
+  }
+});
+
+/**
  * PUBLIC: create a participant booking.
  * Matches the simplified form: name, organization, phone, sex.
  * Rejects duplicate submissions (same name + organization + phone).
@@ -1535,6 +1602,57 @@ router.post("/", async (req, res) => {
     return res.status(500).json({
       message: error.message || "Failed to submit booking",
     });
+  }
+});
+
+/**
+ * ADMIN: register a special guest and mark PRESENT immediately.
+ * Public registration remains closed; this route is for authorized staff only.
+ */
+router.post("/special-guests", adminAuth, async (req, res) => {
+  try {
+    const cleanName = normalizeText(req.body?.name);
+    const cleanOrganization = normalizeText(req.body?.organization);
+    const cleanPhone = normalizeText(req.body?.phone);
+    const cleanSex = normalizeText(req.body?.sex);
+
+    if (!cleanName || !cleanOrganization || !cleanPhone || !cleanSex)
+      return res.status(400).json({ message: "Name, organization, phone and sex are required." });
+    if (!PHONE_REGEX.test(cleanPhone))
+      return res.status(400).json({ message: "A valid phone number is required (09XXXXXXXX)." });
+
+    const duplicate = await Booking.findOne({
+      name: new RegExp(`^${escapeRegex(cleanName)}$`, "i"),
+      phone: cleanPhone,
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        message: "This participant is already registered in the system.",
+        booking: { _id: duplicate._id, name: duplicate.name, organization: duplicate.organization, phone: duplicate.phone, sex: duplicate.sex, checkedIn: Boolean(duplicate.attendance?.checkedIn), checkedInAt: duplicate.attendance?.checkedInAt || null },
+      });
+    }
+
+    const now = new Date();
+    const booking = await Booking.create({
+      name: cleanName, organization: cleanOrganization, phone: cleanPhone, sex: cleanSex,
+      action: "Admin Registered Special Guest",
+      attendance: { checkedIn: true, checkedInAt: now },
+    });
+    if (!booking.qrToken) { booking.qrToken = makeQrToken(booking._id); await booking.save(); }
+
+    const io = getIO?.();
+    if (io) {
+      io.emit("newBooking", booking);
+      io.emit("booking:created", { bookingId: String(booking._id), name: booking.name, organization: booking.organization, specialGuest: true });
+      io.emit("participantCheckedIn", { participantId: String(booking._id), name: booking.name, organization: booking.organization, sex: booking.sex, checkedInAt: booking.attendance.checkedInAt, specialGuest: true });
+    }
+    return res.status(201).json({
+      message: "Special guest registered and marked present.",
+      booking: { _id: booking._id, name: booking.name, organization: booking.organization, phone: booking.phone, sex: booking.sex, attendance: booking.attendance, action: booking.action },
+    });
+  } catch (error) {
+    console.error("POST /bookings/special-guests error:", error);
+    return res.status(500).json({ message: "Failed to register special guest." });
   }
 });
 
